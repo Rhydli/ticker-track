@@ -5,37 +5,47 @@ import api_key
 from io import StringIO
 
 # variables
-tickers = ['BIL', 'BNDX', 'EGIS', 'EPP', 'EWC', 'EWD', 'EWJ', 'EWL', 'EWU', 'EZU', 'FUTY', 'GIBIX', 'GOVT', 'HYLB', 'IAT', 'IVV', 'IWM', 'IXUS', 'LYFE', 'ONLN', 'PAVE', 'QQQ', 'SKYY', 'SMH', 'SRVR', 'STIP', 'UBER', 'UPST', 'USHY', 'USIG', 'VCIT', 'VCSH', 'VGSH', 'VMBS', 'VNLA', 'VTV', 'XTN']
-gets = []
-close_prices = []
-f_y = 2023
-f_m = 1
-f_d = 27
-from_date = f'{f_y}-{f_m}-{f_d}'
+ACTIVE_TICKERS = ['BIL', 'BNDX', 'EGIS', 'EPP', 'EWC', 'EWD', 'EWJ', 'EWL', 'EWU', 'EZU', 'FUTY', 'GIBIX', 'GOVT', 'HYLB', 'IAT', 'IVV', 'IWM', 'IXUS', 'LYFE', 'ONLN', 'PAVE', 'QQQ', 'SKYY', 'SMH', 'SRVR', 'STIP', 'UBER', 'UPST', 'USHY', 'USIG', 'VCIT', 'VCSH', 'VGSH', 'VMBS', 'VNLA', 'VTV', 'XTN']
+INACTIVE_TICKERS = []
+CLOSE_PRICES = []
+FILE_NAME = 'ticker_book.xlsx'
+SHEET_NAME = 'Sheet1'
+YEAR = 2023
+MONTH = 2
+DAY = 27
+DATE = f'{YEAR}-{MONTH}-{DAY}'
 
-# GET requests to API, store responses
-for t in tickers:
-    url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&from={from_date}&exchange=mutf&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
-    gets.append(requests.request("GET", url))
+'''pass in non constant lists for active and inactive tickers
+which are made from CONSTANT all tickers'''
+
+def get_close_prices():
+    # GET requests to API, store responses
+    gets = []
+    for t in ACTIVE_TICKERS:
+        url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&to={DATE}&headers=false&format=json&columns=c&token={api_key.API_KEY}'
+        gets.append(requests.request("GET", url))
+        print(requests.request("GET", url))
     
-# slice requests strings
-for g in gets:
-    c = g.text
-    #close_prices.append(c[6:-2])
-    close_prices.append(c)
-        
-# write and save date, ticker, and price data to excel file
-book = openpyxl.load_workbook('ticker_book.xlsx')
-sheet = book['Sheet1']
-for i in range(len(close_prices)):
-    sheet.cell(row = i + 1, column = 1).value = from_date
-t_row = 0   
-for t in tickers:
-    t_row += 1
-    sheet.cell(row=t_row, column=2).value = t
-c_row = 0
-for c in close_prices:
-    c_row += 1
-    sheet.cell(row=c_row, column=4).value = c
+    # slice requests strings
+    for g in gets:
+        CLOSE_PRICES.append(g.text)
 
-book.save('ticker_book.xlsx')
+def export_data():
+    # write date/ticker/price and save to excel
+    book = openpyxl.load_workbook(FILE_NAME)
+    sheet = book[SHEET_NAME]
+    for i in range(len(CLOSE_PRICES)):
+        sheet.cell(row = i + 1, column = 1).value = DATE
+    row = 0   
+    for t in ACTIVE_TICKERS:
+        row += 1
+        sheet.cell(row=row, column=2).value = t
+    row = 0
+    for c in CLOSE_PRICES:
+        row += 1
+        sheet.cell(row=row, column=4).value = c
+
+    book.save(FILE_NAME)
+
+get_close_prices()
+export_data()
