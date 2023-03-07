@@ -1,6 +1,17 @@
 import requests
 import openpyxl
 import api_key
+from PyQt6 import uic
+from PyQt6.QtWidgets import QApplication
+
+Form, Window = uic.loadUiType("tt.ui")
+
+app = QApplication([])
+window = Window()
+form = Form()
+form.setupUi(window)
+window.show()
+app.exec()
 
 # variables
 ACTIVE_TICKERS = ['BIL', 'BNDX', 'EGIS', 'EPP', 'EWC', 'EWD', 'EWJ', 'EWL', 'EWU', 'EZU', 'FUTY', 'GIBIX', 'GOVT', 'HYLB', 'IAT', 'IVV', 'IWM', 'IXUS', 'LYFE', 'ONLN', 'PAVE', 'QQQ', 'SKYY', 'SMH', 'SRVR', 'STIP', 'UBER', 'UPST', 'USHY', 'USIG', 'VCIT', 'VCSH', 'VGSH', 'VMBS', 'VNLA', 'VTV', 'XTN']
@@ -21,7 +32,7 @@ def get_close_prices():
     # GET requests to API, store responses
     gets = []
     for t in ACTIVE_TICKERS:
-        url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&to={DATE}&headers=false&format=json&columns=c&token={api_key.API_KEY}'
+        url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&to={DATE}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
         gets.append(requests.request("GET", url))
         #print(requests.request("GET", url))
     
@@ -46,5 +57,5 @@ def export_data():
 
     book.save(FILE_NAME)
 
-get_close_prices()
-export_data()
+#get_close_prices()
+#export_data()
