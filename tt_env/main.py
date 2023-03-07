@@ -1,22 +1,13 @@
 import requests
 import openpyxl
 import api_key
+from PyQt6.QtWidgets import *
 from PyQt6 import uic
-from PyQt6.QtWidgets import QApplication
-
-Form, Window = uic.loadUiType("tt.ui")
-
-app = QApplication([])
-window = Window()
-form = Form()
-form.setupUi(window)
-window.show()
-app.exec()
 
 # variables
-ACTIVE_TICKERS = ['BIL', 'BNDX', 'EGIS', 'EPP', 'EWC', 'EWD', 'EWJ', 'EWL', 'EWU', 'EZU', 'FUTY', 'GIBIX', 'GOVT', 'HYLB', 'IAT', 'IVV', 'IWM', 'IXUS', 'LYFE', 'ONLN', 'PAVE', 'QQQ', 'SKYY', 'SMH', 'SRVR', 'STIP', 'UBER', 'UPST', 'USHY', 'USIG', 'VCIT', 'VCSH', 'VGSH', 'VMBS', 'VNLA', 'VTV', 'XTN']
-#ACTIVE_TICKERS = ['GIBIX', 'IAT', 'PAVE', 'SMH', 'USHY', 'USIG']
-INACTIVE_TICKERS = []
+#ACTIVE_TICKERS = ['BIL', 'BNDX', 'EGIS', 'EPP', 'EWC', 'EWD', 'EWJ', 'EWL', 'EWU', 'EZU', 'FUTY', 'GIBIX', 'GOVT', 'HYLB', 'IAT', 'IVV', 'IWM', 'IXUS', 'LYFE', 'ONLN', 'PAVE', 'QQQ', 'SKYY', 'SMH', 'SRVR', 'STIP', 'UBER', 'UPST', 'USHY', 'USIG', 'VCIT', 'VCSH', 'VGSH', 'VMBS', 'VNLA', 'VTV', 'XTN']
+ACTIVE_TICKERS = ['a']
+INACTIVE_TICKERS = ['s']
 CLOSE_PRICES = []
 FILE_NAME = 'ticker_book.xlsx'
 SHEET_NAME = 'Sheet1'
@@ -26,36 +17,97 @@ DAY = 1
 DATE = f'{YEAR}-{MONTH}-{DAY}'
 
 '''pass in non constant lists for active and inactive tickers
-which are made from CONSTANT all tickers'''
+which are made from CONSTANT all tickers list'''
 
-def get_close_prices():
-    # GET requests to API, store responses
-    gets = []
-    for t in ACTIVE_TICKERS:
-        url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&to={DATE}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
-        gets.append(requests.request("GET", url))
-        #print(requests.request("GET", url))
-    
-    # slice requests strings
-    for g in gets:
-        CLOSE_PRICES.append(g.text)
+class MyGui(QMainWindow):
 
-def export_data():
-    # write date/ticker/price and save to excel
-    book = openpyxl.load_workbook(FILE_NAME)
-    sheet = book[SHEET_NAME]
-    for i in range(len(CLOSE_PRICES)):
-        sheet.cell(row = i + 1, column = 1).value = DATE
-    row = 0   
-    for t in ACTIVE_TICKERS:
-        row += 1
-        sheet.cell(row=row, column=2).value = t
-    row = 0
-    for c in CLOSE_PRICES:
-        row += 1
-        sheet.cell(row=row, column=4).value = c
+    def __init__(self):
+        super(MyGui, self).__init__()
+        uic.loadUi('tt.ui', self)
+        self.show()
+        self.setWindowTitle('Ticker Track')
+        self.active_list.addItems(ACTIVE_TICKERS[:])
+        self.inactive_list.addItems(INACTIVE_TICKERS[:])
 
-    book.save(FILE_NAME)
+        self.add_button.clicked.connect(lambda: self.add(self.ticker_line_edit.text()))
+        self.delete_button.clicked.connect(lambda: self.delete(self.ticker_line_edit.text()))
+        self.toggle_button.clicked.connect(self.toggle)
+        self.run_button.clicked.connect(self.run)
 
-#get_close_prices()
-#export_data()
+    def add(self, ticker):
+        '''TODO check if ticker is valid on api'''
+        if ticker != '':
+            if ticker in INACTIVE_TICKERS:
+                ACTIVE_TICKERS.append(ticker)
+                INACTIVE_TICKERS.remove(ticker)
+                self.list_refresh()
+                print(f'{ticker} moved to active tickers.')
+            elif ticker not in ACTIVE_TICKERS:
+                ACTIVE_TICKERS.append(ticker)
+                self.list_refresh()
+                print(f'{ticker} added to active tickers.')
+            else:
+                print(f'{ticker} already in actively tracked tickers.')
+        else:
+            print('No Ticker provided.')
+
+    def delete(self, ticker):
+        '''check if ticker is in either list'''
+        if ticker != '':
+            if ticker in ACTIVE_TICKERS:
+                INACTIVE_TICKERS.append(ticker)
+                ACTIVE_TICKERS.remove(ticker)
+                self.list_refresh()
+                print(f'{ticker} moved to inactive tickers.')
+            else:
+                print(f'{ticker} not found in actively tracked tickers.')
+        else:
+            print('No Ticker provided.')
+
+
+
+    def toggle(self):
+        pass
+
+    def list_refresh(self):
+        self.active_list.clear()
+        self.active_list.addItems(ACTIVE_TICKERS[:])
+        self.inactive_list.clear()
+        self.inactive_list.addItems(INACTIVE_TICKERS[:])
+
+    def run(self):
+        print('Starting')
+        # GET requests to API, retuns <class 'requests.models.Response'>
+        gets = []
+        for t in ACTIVE_TICKERS:
+            url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&to={DATE}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
+            gets.append(requests.request("GET", url))
+        
+        # pull string data from requests
+        for g in gets:
+            CLOSE_PRICES.append(g.text)
+
+        # write date/ticker/price and save to excel
+        book = openpyxl.load_workbook(FILE_NAME)
+        sheet = book[SHEET_NAME]
+        for i in range(len(CLOSE_PRICES)):
+            sheet.cell(row = i + 1, column = 1).value = DATE
+        row = 0   
+        for t in ACTIVE_TICKERS:
+            row += 1
+            sheet.cell(row=row, column=2).value = t
+        row = 0
+        for c in CLOSE_PRICES:
+            row += 1
+            sheet.cell(row=row, column=4).value = c
+
+        book.save(FILE_NAME)
+        print('Complete')
+
+def main():
+    app = QApplication([])
+    window = MyGui()
+    app.exec()
+
+if __name__ == '__main__':
+    main()
