@@ -60,6 +60,9 @@
     </property>
    </widget>
    <widget class="QListWidget" name="inactive_list">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>580</x>
