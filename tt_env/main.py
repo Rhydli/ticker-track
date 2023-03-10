@@ -5,12 +5,6 @@ import config as cfg
 from PyQt6.QtWidgets import *
 from PyQt6 import uic
 
-# variables
-YEAR = 2023
-MONTH = 3
-DAY = 1
-DATE = f'{YEAR}-{MONTH}-{DAY}'
-
 class MyGui(QMainWindow):
 
     def __init__(self):
@@ -21,7 +15,9 @@ class MyGui(QMainWindow):
         self.active_list.addItems(cfg.ACTIVE_TICKERS[:])
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
         self.log_msg = ''
-
+        self.year_line_edit.setText(cfg.YEAR)
+        self.month_line_edit.setText(cfg.MONTH)
+        self.day_line_edit.setText(cfg.DAY)
         self.add_button.clicked.connect(lambda: self.add(self.ticker_line_edit.text().upper()))
         self.delete_button.clicked.connect(lambda: self.delete(self.ticker_line_edit.text().upper()))
         self.toggle_button.clicked.connect(self.toggle)
@@ -50,7 +46,7 @@ class MyGui(QMainWindow):
                         self.log_msg = f'"{ticker}" already in actively tracked tickers.'
                         self.ui_refresh()
                 else:
-                    self.log_msg = f'"{ticker}" has no data in API database.'
+                    self.log_msg = f'API Response: {response.json()["errmsg"]}, Ticker: "{ticker}"'
                     self.ui_refresh()
             except:
                 '''log errors'''
@@ -77,13 +73,15 @@ class MyGui(QMainWindow):
 
     def toggle(self):
         cfg.update_cfg()
-
+        self.ui_refresh()
+        
     def ui_refresh(self):
         self.active_list.clear()
         self.active_list.addItems(cfg.ACTIVE_TICKERS[:])
         self.inactive_list.clear()
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
         self.console_message.setText(self.log_msg) 
+        self.closing_day = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
 
     def run(self):
         # GET requests to API, retuns <class 'requests.models.Response'>
