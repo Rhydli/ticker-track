@@ -2,6 +2,8 @@ import configparser
 import ast
 import datetime
 
+FILE_NAME = 'ticker_book.xlsx'
+SHEET_NAME = 'Sheet1'
 #variables to populate current day on launch
 today = datetime.datetime.now()
 YEAR = (str(today.year))

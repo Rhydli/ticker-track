@@ -15,22 +15,28 @@ class MyGui(QMainWindow):
         self.active_list.addItems(cfg.ACTIVE_TICKERS[:])
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
         self.log_msg = ''
-        self.year_line_edit.setText(cfg.YEAR)
-        self.month_line_edit.setText(cfg.MONTH)
-        self.day_line_edit.setText(cfg.DAY)
+        self.load_date()
         self.add_button.clicked.connect(lambda: self.add(self.ticker_line_edit.text().upper()))
         self.delete_button.clicked.connect(lambda: self.delete(self.ticker_line_edit.text().upper()))
         self.toggle_button.clicked.connect(self.toggle)
         self.run_button.clicked.connect(self.run)
 
+    def load_date(self):
+        if self.year_line_edit:
+            self.year_line_edit.setText(cfg.YEAR)
+            self.month_line_edit.setText(cfg.MONTH)
+            self.day_line_edit.setText(cfg.DAY)
+        else:
+            pass
+
     def add(self, ticker):
         if ticker and not ticker.isspace():
             url = f'https://api.marketdata.app/v1/stocks/quotes/{ticker}/?token={api_key.API_KEY}'
-            #response = requests.request("GET", url)
-            response = True #bypass gets
+            response = requests.request("GET", url)
+            #response = True #bypass gets
             try:
-                #if bool(response.json()['s'] == 'ok'):
-                if response: #bypass gets
+                if bool(response.json()['s'] == 'ok'):
+                #if response: #bypass gets
                     if ticker in cfg.INACTIVE_TICKERS:
                         cfg.ACTIVE_TICKERS.append(ticker)
                         cfg.INACTIVE_TICKERS.remove(ticker)
@@ -74,13 +80,14 @@ class MyGui(QMainWindow):
     def toggle(self):
         cfg.update_cfg()
         self.ui_refresh()
+        print(self.closing_day)
         
     def ui_refresh(self):
         self.active_list.clear()
         self.active_list.addItems(cfg.ACTIVE_TICKERS[:])
         self.inactive_list.clear()
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
-        self.console_message.setText(self.log_msg) 
+        self.console_message.setText(self.log_msg)
         self.closing_day = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
 
     def run(self):
@@ -101,6 +108,7 @@ class MyGui(QMainWindow):
             sheet = book[cfg.SHEET_NAME]
             for i in range(len(close_prices)):
                 sheet.cell(row = i + 1, column = 1).value = self.closing_day
+                print(self.closing_day)
             row = 0   
             for t in cfg.ACTIVE_TICKERS:
                 row += 1
@@ -110,6 +118,8 @@ class MyGui(QMainWindow):
                 row += 1
                 sheet.cell(row=row, column=4).value = c
             book.save(cfg.FILE_NAME)
+            self.log_msg = 'Finished'
+            self.ui_refresh()
         except:
             self.log_msg = f'File "{cfg.FILE_NAME}" not found.'
             self.ui_refresh()
