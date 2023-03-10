@@ -5,6 +5,10 @@ import config as cfg
 from PyQt6.QtWidgets import *
 from PyQt6 import uic
 
+'''UNC network pathing, auto yesterdays date,
+logging history of console,
+period in ticker field crashes because '''
+
 class MyGui(QMainWindow):
 
     def __init__(self):
@@ -17,8 +21,8 @@ class MyGui(QMainWindow):
         self.log_msg = ''
         self.load_date()
         self.add_button.clicked.connect(lambda: self.add(self.ticker_line_edit.text().upper()))
+        self.toggle_button.clicked.connect(lambda: self.toggle(self.ticker_line_edit.text().upper()))
         self.delete_button.clicked.connect(lambda: self.delete(self.ticker_line_edit.text().upper()))
-        self.toggle_button.clicked.connect(self.toggle)
         self.run_button.clicked.connect(self.run)
 
     def load_date(self):
@@ -33,23 +37,18 @@ class MyGui(QMainWindow):
         if ticker and not ticker.isspace():
             url = f'https://api.marketdata.app/v1/stocks/quotes/{ticker}/?token={api_key.API_KEY}'
             response = requests.request("GET", url)
-            #response = True #bypass gets
             try:
                 if bool(response.json()['s'] == 'ok'):
-                #if response: #bypass gets
-                    if ticker in cfg.INACTIVE_TICKERS:
-                        cfg.ACTIVE_TICKERS.append(ticker)
-                        cfg.INACTIVE_TICKERS.remove(ticker)
-                        cfg.update_cfg()
-                        self.log_msg = f'"{ticker}" moved to active tickers.'
+                    if ticker in cfg.ACTIVE_TICKERS:
+                        self.log_msg = f'"{ticker}" already in active tickers.'
                         self.ui_refresh()
-                    elif ticker not in cfg.ACTIVE_TICKERS:
+                    elif ticker not in cfg.ACTIVE_TICKERS and ticker not in cfg.INACTIVE_TICKERS:
                         cfg.ACTIVE_TICKERS.append(ticker)
                         cfg.update_cfg()
                         self.log_msg = f'"{ticker}" added to active tickers.'
                         self.ui_refresh()
                     else:
-                        self.log_msg = f'"{ticker}" already in actively tracked tickers.'
+                        self.log_msg = f'"{ticker}" already in inactive tickers.'
                         self.ui_refresh()
                 else:
                     self.log_msg = f'API Response: {response.json()["errmsg"]}, Ticker: "{ticker}"'
@@ -62,7 +61,7 @@ class MyGui(QMainWindow):
             self.log_msg = 'No Ticker provided.'
             self.ui_refresh()
 
-    def delete(self, ticker):
+    def toggle(self, ticker):
         if ticker and not ticker.isspace():
             if ticker in cfg.ACTIVE_TICKERS:
                 cfg.INACTIVE_TICKERS.append(ticker)
@@ -70,17 +69,36 @@ class MyGui(QMainWindow):
                 cfg.update_cfg()
                 self.log_msg = f'"{ticker}" moved to inactive tickers.'
                 self.ui_refresh()
+            elif ticker in cfg.INACTIVE_TICKERS:
+                cfg.ACTIVE_TICKERS.append(ticker)
+                cfg.INACTIVE_TICKERS.remove(ticker)
+                cfg.update_cfg()
+                self.log_msg = f'"{ticker}" moved to active tickers.'
+                self.ui_refresh()
             else:
-                self.log_msg = f'"{ticker}" not found in actively tracked tickers.'
+                self.log_msg = f'"{ticker}" ticker has not yet been added.'
                 self.ui_refresh()
         else:
             self.log_msg = 'No Ticker provided.'
             self.ui_refresh()
 
-    def toggle(self):
-        cfg.update_cfg()
-        self.ui_refresh()
-        print(self.closing_day)
+    def delete(self, ticker):
+        if ticker and not ticker.isspace():
+            if ticker in cfg.ACTIVE_TICKERS or ticker in cfg.INACTIVE_TICKERS:
+                try:
+                    cfg.ACTIVE_TICKERS.remove(ticker)
+                except:
+                    cfg.INACTIVE_TICKERS.remove(ticker)
+                finally:
+                    cfg.update_cfg()
+                    self.log_msg = f'"{ticker}" has been successfully removed.'
+                    self.ui_refresh()
+            else:
+                self.log_msg = f'Removal unsuccessful. "{ticker}" not found.'
+                self.ui_refresh()
+        else:
+            self.log_msg = 'No Ticker provided.'
+            self.ui_refresh()
         
     def ui_refresh(self):
         self.active_list.clear()
@@ -123,6 +141,7 @@ class MyGui(QMainWindow):
         except:
             self.log_msg = f'File "{cfg.FILE_NAME}" not found.'
             self.ui_refresh()
+
 def main():
     app = QApplication([])
     window = MyGui()
