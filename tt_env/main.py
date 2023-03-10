@@ -88,7 +88,7 @@ class MyGui(QMainWindow):
         gets = []
         close_prices = []
         for t in cfg.ACTIVE_TICKERS:
-            url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&to={DATE}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
+            url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&to={self.closing_day}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
             gets.append(requests.request("GET", url))
         
         # pull string data from requests
@@ -100,7 +100,7 @@ class MyGui(QMainWindow):
             book = openpyxl.load_workbook(cfg.FILE_NAME)
             sheet = book[cfg.SHEET_NAME]
             for i in range(len(close_prices)):
-                sheet.cell(row = i + 1, column = 1).value = DATE
+                sheet.cell(row = i + 1, column = 1).value = self.closing_day
             row = 0   
             for t in cfg.ACTIVE_TICKERS:
                 row += 1
