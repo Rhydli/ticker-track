@@ -1,14 +1,17 @@
 import configparser
 import ast
-import datetime
+from datetime import date
+from datetime import timedelta
 
+#file data
 FILE_NAME = 'ticker_book.xlsx'
 SHEET_NAME = 'Sheet1'
-#variables to populate current day on launch
-today = datetime.datetime.now()
-YEAR = (str(today.year))
-MONTH = (str(today.month))
-DAY = (str(today.day))
+#variables to populate previous day on launch
+today = date.today()
+yesterday = today - timedelta(days = 1)
+YEAR = (str(yesterday.year))
+MONTH = (str(yesterday.month))
+DAY = (str(yesterday.day))
 #store config file in memory on load for script use
 config = configparser.ConfigParser()
 config.read('tt_config.ini')

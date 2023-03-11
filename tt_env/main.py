@@ -5,9 +5,9 @@ import config as cfg
 from PyQt6.QtWidgets import *
 from PyQt6 import uic
 
-'''UNC network pathing, auto yesterdays date,
+'''UNC network pathing,
 logging history of console,
-period in ticker field crashes because '''
+period in ticker field crashes because of .upper()'''
 
 class MyGui(QMainWindow):
 
@@ -20,7 +20,7 @@ class MyGui(QMainWindow):
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
         self.log_msg = ''
         self.load_date()
-        self.add_button.clicked.connect(lambda: self.add(self.ticker_line_edit.text().upper()))
+        self.add_button.clicked.connect(lambda: self.add((self.ticker_line_edit.text().upper())))
         self.toggle_button.clicked.connect(lambda: self.toggle(self.ticker_line_edit.text().upper()))
         self.delete_button.clicked.connect(lambda: self.delete(self.ticker_line_edit.text().upper()))
         self.run_button.clicked.connect(self.run)
@@ -33,7 +33,9 @@ class MyGui(QMainWindow):
         else:
             pass
 
-    def add(self, ticker):
+    def add(self, t):
+        my_dict = {46:None}
+        ticker = t.translate(my_dict)
         if ticker and not ticker.isspace():
             url = f'https://api.marketdata.app/v1/stocks/quotes/{ticker}/?token={api_key.API_KEY}'
             response = requests.request("GET", url)
