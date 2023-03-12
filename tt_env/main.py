@@ -7,7 +7,7 @@ from PyQt6 import uic
 
 '''UNC network pathing,
 logging history of console,
-period in ticker field crashes because of .upper()'''
+file dialog implementation'''
 
 class MyGui(QMainWindow):
 
