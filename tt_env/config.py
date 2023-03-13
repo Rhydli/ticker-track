@@ -5,11 +5,10 @@ from datetime import date
 from datetime import timedelta
 
 #file data
-SERVER_PATH = '//dt-file/Software/Test/'
-FILE_NAME = 'testfile.xlsx'
+SERVER_PATH = '\\\\dt-file\\Software\\Test\\'
+FILE_NAME = 'ticker_book.xlsx'
 SHEET_NAME = 'Sheet1'
 FILE_PATH = os.path.join(SERVER_PATH, FILE_NAME) 
-#print(FILE_PATH)
 #variables to populate previous day on launch
 today = date.today()
 yesterday = today - timedelta(days = 1)

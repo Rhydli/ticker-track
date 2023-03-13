@@ -31,7 +31,7 @@
      <rect>
       <x>380</x>
       <y>30</y>
-      <width>80</width>
+      <width>90</width>
       <height>290</height>
      </rect>
     </property>
@@ -39,7 +39,7 @@
    <widget class="QLabel" name="active_label">
     <property name="geometry">
      <rect>
-      <x>396</x>
+      <x>400</x>
       <y>10</y>
       <width>50</width>
       <height>16</height>
@@ -52,7 +52,7 @@
    <widget class="QLabel" name="inactive_label">
     <property name="geometry">
      <rect>
-      <x>546</x>
+      <x>540</x>
       <y>10</y>
       <width>50</width>
       <height>16</height>
@@ -68,9 +68,9 @@
     </property>
     <property name="geometry">
      <rect>
-      <x>530</x>
+      <x>520</x>
       <y>30</y>
-      <width>80</width>
+      <width>90</width>
       <height>290</height>
      </rect>
     </property>
@@ -78,7 +78,7 @@
    <widget class="QPushButton" name="toggle_button">
     <property name="geometry">
      <rect>
-      <x>230</x>
+      <x>240</x>
       <y>10</y>
       <width>50</width>
       <height>31</height>
@@ -169,7 +169,7 @@
    <widget class="QPushButton" name="delete_button">
     <property name="geometry">
      <rect>
-      <x>290</x>
+      <x>310</x>
       <y>10</y>
       <width>50</width>
       <height>30</height>
@@ -306,10 +306,10 @@
      <cstring></cstring>
     </property>
    </widget>
-   <widget class="QPushButton" name="file_button">
+   <widget class="QPushButton" name="browse_button">
     <property name="geometry">
      <rect>
-      <x>280</x>
+      <x>300</x>
       <y>130</y>
       <width>60</width>
       <height>30</height>
@@ -319,12 +319,12 @@
      <string>BROWSE</string>
     </property>
    </widget>
-   <widget class="QLabel" name="path_console">
+   <widget class="QLabel" name="path_readout1">
     <property name="geometry">
      <rect>
       <x>70</x>
-      <y>130</y>
-      <width>200</width>
+      <y>220</y>
+      <width>220</width>
       <height>30</height>
      </rect>
     </property>
@@ -361,6 +361,27 @@
     </property>
     <property name="text">
      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;PATH:&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="path_line_edit">
+    <property name="geometry">
+     <rect>
+      <x>70</x>
+      <y>130</y>
+      <width>220</width>
+      <height>30</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>10</pointsize>
+     </font>
+    </property>
+    <property name="frame">
+     <bool>true</bool>
+    </property>
+    <property name="placeholderText">
+     <string>File Path</string>
     </property>
    </widget>
   </widget>

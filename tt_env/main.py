@@ -20,11 +20,18 @@ class MyGui(QMainWindow):
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
         self.log_msg = ''
         self.load_date()
+        self.closing_day = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
         self.add_button.clicked.connect(lambda: self.add((self.ticker_line_edit.text().upper())))
         self.toggle_button.clicked.connect(lambda: self.toggle(self.ticker_line_edit.text().upper()))
         self.delete_button.clicked.connect(lambda: self.delete(self.ticker_line_edit.text().upper()))
+        self.browse_button.clicked.connect(self.browse)
         self.run_button.clicked.connect(self.run)
 
+    def browse(self):
+        self.file_path = QFileDialog.getOpenFileName(self, "Open File", "C:/Users/theni/pyproj/")
+        self.path_line_edit.setText(self.file_path[0])
+        self.path_line_edit.setText(self.file_path[0])
+        
     def load_date(self):
         if self.year_line_edit:
             self.year_line_edit.setText(cfg.YEAR)
@@ -108,7 +115,7 @@ class MyGui(QMainWindow):
         self.inactive_list.clear()
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
         self.console_message.setText(self.log_msg)
-        self.closing_day = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
+        #self.closing_day = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
 
     def run(self):
         # GET requests to API, retuns <class 'requests.models.Response'>
@@ -128,7 +135,6 @@ class MyGui(QMainWindow):
             sheet = book[cfg.SHEET_NAME]
             for i in range(len(close_prices)):
                 sheet.cell(row = i + 1, column = 1).value = self.closing_day
-                print(self.closing_day)
             row = 0   
             for t in cfg.ACTIVE_TICKERS:
                 row += 1
