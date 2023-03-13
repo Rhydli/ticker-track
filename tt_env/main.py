@@ -30,7 +30,7 @@ class MyGui(QMainWindow):
 
     def browse(self):
         #get file path from user selection
-        file_name = QFileDialog.getOpenFileName(self, "Open File", "C:/Users/theni/pyproj/")
+        file_name = QFileDialog.getOpenFileName(self, "Open File", "")
         #show user selection in UI
         self.path_line_edit.setText(file_name[0])
         #full file path for RUN command
