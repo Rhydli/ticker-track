@@ -5,9 +5,8 @@ import config as cfg
 from PyQt6.QtWidgets import *
 from PyQt6 import uic
 
-'''UNC network pathing,
-logging history of console,
-file dialog implementation'''
+'''logging history of console,
+reset date button'''
 
 class MyGui(QMainWindow):
 
@@ -18,15 +17,18 @@ class MyGui(QMainWindow):
         self.setWindowTitle('Ticker Track')
         self.active_list.addItems(cfg.ACTIVE_TICKERS[:])
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
+        self.load_date()
         self.log_msg = ''
         self.file_path = ''
-        self.load_date()
-        self.closing_day = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
         self.add_button.clicked.connect(lambda: self.add((self.ticker_line_edit.text().upper())))
         self.toggle_button.clicked.connect(lambda: self.toggle(self.ticker_line_edit.text().upper()))
         self.delete_button.clicked.connect(lambda: self.delete(self.ticker_line_edit.text().upper()))
+        self.reset_date_button.clicked.connect(self.reset_date)
         self.browse_button.clicked.connect(self.browse)
         self.run_button.clicked.connect(self.run)
+
+    def reset_date(self):
+        self.load_date()
 
     def browse(self):
         #get file path from user selection
@@ -37,7 +39,6 @@ class MyGui(QMainWindow):
         self.file_path = self.path_line_edit.text()
         self.ui_refresh()
 
-        
     def load_date(self):
         if self.year_line_edit:
             self.year_line_edit.setText(cfg.YEAR)
@@ -121,9 +122,9 @@ class MyGui(QMainWindow):
         self.inactive_list.clear()
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
         self.console_message.setText(self.log_msg)
-        #self.closing_day = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
 
     def run(self):
+        self.closing_day = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
         # GET requests to API, retuns <class 'requests.models.Response'>
         gets = []
         close_prices = []
@@ -150,7 +151,7 @@ class MyGui(QMainWindow):
                 row += 1
                 sheet.cell(row=row, column=4).value = c
             book.save(self.file_path)
-            self.log_msg = 'Finished'
+            self.log_msg = f'Saved results to {self.file_path} for {self.closing_day}.'
             self.ui_refresh()
         except:
             self.log_msg = f'File "{self.file_path}" not found.'
