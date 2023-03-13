@@ -19,6 +19,7 @@ class MyGui(QMainWindow):
         self.active_list.addItems(cfg.ACTIVE_TICKERS[:])
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
         self.log_msg = ''
+        self.file_path = ''
         self.load_date()
         self.closing_day = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
         self.add_button.clicked.connect(lambda: self.add((self.ticker_line_edit.text().upper())))
@@ -28,9 +29,14 @@ class MyGui(QMainWindow):
         self.run_button.clicked.connect(self.run)
 
     def browse(self):
-        self.file_path = QFileDialog.getOpenFileName(self, "Open File", "C:/Users/theni/pyproj/")
-        self.path_line_edit.setText(self.file_path[0])
-        self.path_line_edit.setText(self.file_path[0])
+        #get file path from user selection
+        file_name = QFileDialog.getOpenFileName(self, "Open File", "C:/Users/theni/pyproj/")
+        #show user selection in UI
+        self.path_line_edit.setText(file_name[0])
+        #full file path for RUN command
+        self.file_path = self.path_line_edit.text()
+        self.ui_refresh()
+
         
     def load_date(self):
         if self.year_line_edit:
@@ -131,7 +137,7 @@ class MyGui(QMainWindow):
 
         # write date/ticker/price and save to excel
         try:
-            book = openpyxl.load_workbook(cfg.FILE_PATH)
+            book = openpyxl.load_workbook(self.file_path)
             sheet = book[cfg.SHEET_NAME]
             for i in range(len(close_prices)):
                 sheet.cell(row = i + 1, column = 1).value = self.closing_day
@@ -143,11 +149,11 @@ class MyGui(QMainWindow):
             for c in close_prices:
                 row += 1
                 sheet.cell(row=row, column=4).value = c
-            book.save(cfg.FILE_PATH)
+            book.save(self.file_path)
             self.log_msg = 'Finished'
             self.ui_refresh()
         except:
-            self.log_msg = f'File "{cfg.FILE_PATH}" not found.'
+            self.log_msg = f'File "{self.file_path}" not found.'
             self.ui_refresh()
 
 def main():
