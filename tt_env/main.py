@@ -124,7 +124,7 @@ class MyGui(QMainWindow):
 
         # write date/ticker/price and save to excel
         try:
-            book = openpyxl.load_workbook(cfg.FILE_NAME)
+            book = openpyxl.load_workbook(cfg.FILE_PATH)
             sheet = book[cfg.SHEET_NAME]
             for i in range(len(close_prices)):
                 sheet.cell(row = i + 1, column = 1).value = self.closing_day
@@ -137,11 +137,11 @@ class MyGui(QMainWindow):
             for c in close_prices:
                 row += 1
                 sheet.cell(row=row, column=4).value = c
-            book.save(cfg.FILE_NAME)
+            book.save(cfg.FILE_PATH)
             self.log_msg = 'Finished'
             self.ui_refresh()
         except:
-            self.log_msg = f'File "{cfg.FILE_NAME}" not found.'
+            self.log_msg = f'File "{cfg.FILE_PATH}" not found.'
             self.ui_refresh()
 
 def main():
