@@ -3,6 +3,14 @@ import ast
 import os
 from datetime import date
 from datetime import timedelta
+from dateutil.parser import parse
+
+def update_cfg():
+    #convert list data back into str and save into ini file
+    config.set('TICKERS', 'active_tickers', str(ACTIVE_TICKERS))
+    config.set('TICKERS', 'inactive_tickers', str(INACTIVE_TICKERS))
+    with open('tt_config.ini', 'w') as configfile:
+        config.write(configfile)
 
 #file data
 SERVER_PATH = '\\\\dt-file\\Software\\Test\\'
@@ -22,9 +30,3 @@ config.read('tt_config.ini')
 ACTIVE_TICKERS = ast.literal_eval(config['TICKERS']['active_tickers'])
 INACTIVE_TICKERS = ast.literal_eval(config['TICKERS']['inactive_tickers'])
 
-def update_cfg():
-    #convert list data back into str and save into ini file
-    config.set('TICKERS', 'active_tickers', str(ACTIVE_TICKERS))
-    config.set('TICKERS', 'inactive_tickers', str(INACTIVE_TICKERS))
-    with open('tt_config.ini', 'w') as configfile:
-        config.write(configfile)

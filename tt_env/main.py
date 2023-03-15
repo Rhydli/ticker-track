@@ -5,8 +5,8 @@ import config as cfg
 from PyQt6.QtWidgets import *
 from PyQt6 import uic
 
-'''logging history of console,
-reset date button'''
+
+'''logging history of console'''
 
 class MyGui(QMainWindow):
 
@@ -27,6 +27,14 @@ class MyGui(QMainWindow):
         self.browse_button.clicked.connect(self.browse)
         self.run_button.clicked.connect(self.run)
 
+    def load_date(self):
+        if self.year_line_edit:
+            self.year_line_edit.setText(cfg.YEAR)
+            self.month_line_edit.setText(cfg.MONTH)
+            self.day_line_edit.setText(cfg.DAY)
+        else:
+            pass
+
     def reset_date(self):
         self.load_date()
 
@@ -39,17 +47,18 @@ class MyGui(QMainWindow):
         self.file_path = self.path_line_edit.text()
         self.ui_refresh()
 
-    def load_date(self):
-        if self.year_line_edit:
-            self.year_line_edit.setText(cfg.YEAR)
-            self.month_line_edit.setText(cfg.MONTH)
-            self.day_line_edit.setText(cfg.DAY)
-        else:
-            pass
+    def ui_refresh(self):
+        self.active_list.clear()
+        self.active_list.addItems(cfg.ACTIVE_TICKERS[:])
+        self.inactive_list.clear()
+        self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
+        self.console_message.setText(self.log_msg)
 
-    def add(self, t):
-        my_dict = {46:None}
-        ticker = t.translate(my_dict)
+    def add(self, input):
+        #remove unwanted characters from user input
+        my_dict = {46: None, 63: None}
+        ticker = input.translate(my_dict)
+        #check that data exists for ticker with API and add ticker
         if ticker and not ticker.isspace():
             url = f'https://api.marketdata.app/v1/stocks/quotes/{ticker}/?token={api_key.API_KEY}'
             response = requests.request("GET", url)
@@ -78,6 +87,7 @@ class MyGui(QMainWindow):
             self.ui_refresh()
 
     def toggle(self, ticker):
+        #move ticker between active and inactive lists
         if ticker and not ticker.isspace():
             if ticker in cfg.ACTIVE_TICKERS:
                 cfg.INACTIVE_TICKERS.append(ticker)
@@ -99,6 +109,7 @@ class MyGui(QMainWindow):
             self.ui_refresh()
 
     def delete(self, ticker):
+        #remove ticker from either list
         if ticker and not ticker.isspace():
             if ticker in cfg.ACTIVE_TICKERS or ticker in cfg.INACTIVE_TICKERS:
                 try:
@@ -116,45 +127,44 @@ class MyGui(QMainWindow):
             self.log_msg = 'No Ticker provided.'
             self.ui_refresh()
         
-    def ui_refresh(self):
-        self.active_list.clear()
-        self.active_list.addItems(cfg.ACTIVE_TICKERS[:])
-        self.inactive_list.clear()
-        self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
-        self.console_message.setText(self.log_msg)
-
     def run(self):
-        self.closing_day = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
-        # GET requests to API, retuns <class 'requests.models.Response'>
-        gets = []
-        close_prices = []
-        for t in cfg.ACTIVE_TICKERS:
-            url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&to={self.closing_day}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
-            gets.append(requests.request("GET", url))
-        
-        # pull string data from requests
-        for g in gets:
-            close_prices.append(g.text)
-
-        # write date/ticker/price and save to excel
+        #pull date from UI user input
+        day_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
         try:
-            book = openpyxl.load_workbook(self.file_path)
-            sheet = book[cfg.SHEET_NAME]
-            for i in range(len(close_prices)):
-                sheet.cell(row = i + 1, column = 1).value = self.closing_day
-            row = 0   
+            #format date
+            closing_day = str(cfg.parse(day_string))[:10]
+            #init variables
+            gets = []
+            close_prices = []
+            # GET requests to API
             for t in cfg.ACTIVE_TICKERS:
-                row += 1
-                sheet.cell(row=row, column=2).value = t
-            row = 0
-            for c in close_prices:
-                row += 1
-                sheet.cell(row=row, column=4).value = c
-            book.save(self.file_path)
-            self.log_msg = f'Saved results to {self.file_path} for {self.closing_day}.'
-            self.ui_refresh()
+                url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={closing_day}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
+                gets.append(requests.request("GET", url))
+            # pull string data from requests
+            for g in gets:
+                close_prices.append(g.text)
+            # write date/ticker/price and save to excel
+            try:
+                book = openpyxl.load_workbook(self.file_path)
+                sheet = book[cfg.SHEET_NAME]
+                for i in range(len(close_prices)):
+                    sheet.cell(row = i + 1, column = 1).value = closing_day
+                row = 0   
+                for t in cfg.ACTIVE_TICKERS:
+                    row += 1
+                    sheet.cell(row=row, column=2).value = t
+                row = 0
+                for c in close_prices:
+                    row += 1
+                    sheet.cell(row=row, column=4).value = c
+                book.save(self.file_path)
+                self.log_msg = f'Saved results to {self.file_path} for {closing_day}.'
+                self.ui_refresh()
+            except:
+                self.log_msg = f'File "{self.file_path}" not found.'
+                self.ui_refresh()
         except:
-            self.log_msg = f'File "{self.file_path}" not found.'
+            self.log_msg = f'"{day_string}" is not a valid date. YYYY-MM-DD.'
             self.ui_refresh()
 
 def main():
