@@ -5,7 +5,6 @@ import config as cfg
 from PyQt6.QtWidgets import *
 from PyQt6 import uic
 
-
 '''logging history of console'''
 
 class MyGui(QMainWindow):
@@ -23,28 +22,19 @@ class MyGui(QMainWindow):
         self.add_button.clicked.connect(lambda: self.add((self.ticker_line_edit.text().upper())))
         self.toggle_button.clicked.connect(lambda: self.toggle(self.ticker_line_edit.text().upper()))
         self.delete_button.clicked.connect(lambda: self.delete(self.ticker_line_edit.text().upper()))
-        self.reset_date_button.clicked.connect(self.reset_date)
+        self.reset_date_button.clicked.connect(self.load_date)
         self.browse_button.clicked.connect(self.browse)
         self.run_button.clicked.connect(self.run)
 
     def load_date(self):
-        if self.year_line_edit:
-            self.year_line_edit.setText(cfg.YEAR)
-            self.month_line_edit.setText(cfg.MONTH)
-            self.day_line_edit.setText(cfg.DAY)
-        else:
-            pass
-
-    def reset_date(self):
-        self.load_date()
+        self.year_line_edit.setText(cfg.YEAR)
+        self.month_line_edit.setText(cfg.MONTH)
+        self.day_line_edit.setText(cfg.DAY)
 
     def browse(self):
-        #get file path from user selection
-        file_name = QFileDialog.getOpenFileName(self, "Open File", "")
-        #show user selection in UI
-        self.path_line_edit.setText(file_name[0])
-        #full file path for RUN command
-        self.file_path = self.path_line_edit.text()
+        file_name = QFileDialog.getOpenFileName(self, "Open File", "") # get file path from user selection
+        self.path_line_edit.setText(file_name[0]) # show user selection in UI
+        self.file_path = self.path_line_edit.text() # full file path for RUN command
         self.ui_refresh()
 
     def ui_refresh(self):
@@ -54,16 +44,14 @@ class MyGui(QMainWindow):
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
         self.console_message.setText(self.log_msg)
 
-    def add(self, input):
-        #remove unwanted characters from user input
-        my_dict = {46: None, 63: None}
+    def add(self, input): # add ticker to active list
+        my_dict = {46: None, 63: None} # remove unwanted characters from user input and check if valid
         ticker = input.translate(my_dict)
-        #check that data exists for ticker with API and add ticker
         if ticker and not ticker.isspace():
             url = f'https://api.marketdata.app/v1/stocks/quotes/{ticker}/?token={api_key.API_KEY}'
             response = requests.request("GET", url)
-            try:
-                if bool(response.json()['s'] == 'ok'):
+            try: 
+                if bool(response.json()['s'] == 'ok'): # check API for ticker data
                     if ticker in cfg.ACTIVE_TICKERS:
                         self.log_msg = f'"{ticker}" already in active tickers.'
                         self.ui_refresh()
@@ -86,8 +74,7 @@ class MyGui(QMainWindow):
             self.log_msg = 'No Ticker provided.'
             self.ui_refresh()
 
-    def toggle(self, ticker):
-        #move ticker between active and inactive lists
+    def toggle(self, ticker): # move ticker between active and inactive lists
         if ticker and not ticker.isspace():
             if ticker in cfg.ACTIVE_TICKERS:
                 cfg.INACTIVE_TICKERS.append(ticker)
@@ -108,8 +95,7 @@ class MyGui(QMainWindow):
             self.log_msg = 'No Ticker provided.'
             self.ui_refresh()
 
-    def delete(self, ticker):
-        #remove ticker from either list
+    def delete(self, ticker): # remove ticker from either list
         if ticker and not ticker.isspace():
             if ticker in cfg.ACTIVE_TICKERS or ticker in cfg.INACTIVE_TICKERS:
                 try:
@@ -127,24 +113,18 @@ class MyGui(QMainWindow):
             self.log_msg = 'No Ticker provided.'
             self.ui_refresh()
         
-    def run(self):
-        #pull date from UI user input
-        day_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
+    def run(self): # export data to file
+        day_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}' # pull date from UI user input
         try:
-            #format date
-            closing_day = str(cfg.parse(day_string))[:10]
-            #init variables
+            closing_day = str(cfg.parse(day_string))[:10] # format date
             gets = []
             close_prices = []
-            # GET requests to API
-            for t in cfg.ACTIVE_TICKERS:
+            for t in cfg.ACTIVE_TICKERS: # GET requests to API
                 url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={closing_day}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
                 gets.append(requests.request("GET", url))
-            # pull string data from requests
-            for g in gets:
+            for g in gets: # pull string data from requests
                 close_prices.append(g.text)
-            # write date/ticker/price and save to excel
-            try:
+            try: # write and save data
                 book = openpyxl.load_workbook(self.file_path)
                 sheet = book[cfg.SHEET_NAME]
                 for i in range(len(close_prices)):
