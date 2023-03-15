@@ -4,26 +4,22 @@ from datetime import date
 from datetime import timedelta
 from dateutil.parser import parse
 
-def update_cfg():
-    #convert list data back into str and save into ini file
+def update_cfg(): # convert list data back into str and save into ini file
     config.set('TICKERS', 'active_tickers', str(ACTIVE_TICKERS))
     config.set('TICKERS', 'inactive_tickers', str(INACTIVE_TICKERS))
     with open('tt_config.ini', 'w') as configfile:
         config.write(configfile)
 
-#store config file in memory on load for script use
 config = configparser.ConfigParser()
-config.read('tt_config.ini')
+config.read('tt_config.ini') # store config file in memory on load for script use
 
-#config parser stores all values as strings, convert to lists
+# config parser stores all values as strings, convert to lists
 ACTIVE_TICKERS = ast.literal_eval(config['TICKERS']['active_tickers'])
 INACTIVE_TICKERS = ast.literal_eval(config['TICKERS']['inactive_tickers'])
 
-#variables to populate previous day on launch
+# variables to populate previous day on launch
 today = date.today()
 yesterday = today - timedelta(days = 1)
 YEAR = (str(yesterday.year))
 MONTH = (str(yesterday.month))
 DAY = (str(yesterday.day))
-
-

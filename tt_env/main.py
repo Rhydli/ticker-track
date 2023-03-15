@@ -122,7 +122,7 @@ class MyGui(QMainWindow):
             for t in cfg.ACTIVE_TICKERS: # GET requests to API
                 url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={closing_day}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
                 gets.append(requests.request("GET", url))
-            for g in gets: # pull string data from requests
+            for g in gets: # pull and store string data from GET requests
                 close_prices.append(g.text)
             try: # write and save data
                 book = openpyxl.load_workbook(self.file_path)
