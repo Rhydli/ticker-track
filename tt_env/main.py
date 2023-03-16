@@ -29,6 +29,7 @@ class MyGui(QMainWindow):
         self.load_date()
         self.log_msg = ''
         self.file_path = self.path_line_edit.text()
+        self.path_line_edit.setToolTip(self.path_line_edit.text())
         self.add_button.clicked.connect(lambda: self.add((self.ticker_line_edit.text().upper())))
         self.toggle_button.clicked.connect(lambda: self.toggle(self.ticker_line_edit.text().upper()))
         self.delete_button.clicked.connect(lambda: self.delete(self.ticker_line_edit.text().upper()))
@@ -59,6 +60,7 @@ class MyGui(QMainWindow):
         self.inactive_list.clear()
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
         self.console_message.setText(self.log_msg)
+        self.console_message.setToolTip(self.log_msg)
 
     def add(self, input): # add ticker to active list
         my_dict = {46: None, 63: None} # remove unwanted characters from user input and check if valid

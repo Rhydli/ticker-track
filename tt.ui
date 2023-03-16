@@ -32,7 +32,7 @@
       <x>380</x>
       <y>30</y>
       <width>90</width>
-      <height>290</height>
+      <height>260</height>
      </rect>
     </property>
    </widget>
@@ -71,7 +71,7 @@
       <x>520</x>
       <y>30</y>
       <width>90</width>
-      <height>290</height>
+      <height>260</height>
      </rect>
     </property>
    </widget>
@@ -280,7 +280,7 @@
      <rect>
       <x>10</x>
       <y>300</y>
-      <width>360</width>
+      <width>600</width>
       <height>20</height>
      </rect>
     </property>
@@ -343,7 +343,7 @@
     </property>
     <property name="font">
      <font>
-      <pointsize>10</pointsize>
+      <pointsize>8</pointsize>
      </font>
     </property>
     <property name="frame">
