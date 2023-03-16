@@ -4,11 +4,13 @@ from datetime import date
 from datetime import timedelta
 from dateutil.parser import parse
 
+
 def update_cfg(): # convert list data back into str and save into ini file
     config.set('TICKERS', 'active_tickers', str(ACTIVE_TICKERS))
     config.set('TICKERS', 'inactive_tickers', str(INACTIVE_TICKERS))
     with open('tt_config.ini', 'w') as configfile:
         config.write(configfile)
+
 
 config = configparser.ConfigParser()
 config.read('tt_config.ini') # store config file in memory on load for script use

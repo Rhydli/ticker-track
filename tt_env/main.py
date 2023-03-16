@@ -1,10 +1,11 @@
+import logging
 import requests
 import openpyxl
-import api_key
-import logging
-import config as cfg
 from PyQt6.QtWidgets import *
 from PyQt6 import uic
+import api_key
+import config as cfg
+
 
 # log setup
 logger = logging.getLogger(__name__)
@@ -13,6 +14,7 @@ formatter = logging.Formatter('%(levelname)s:%(name)s:%(asctime)s:%(message)s')
 file_handler = logging.FileHandler('repository.log')
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
+
 
 class MyGui(QMainWindow):
 
@@ -175,6 +177,7 @@ class MyGui(QMainWindow):
             self.log_msg = f'"{day_string}" is not a valid date. YYYY-MM-DD.'
             logger.info(f'"{day_string}" is not a valid date. YYYY-MM-DD.')
             self.ui_refresh()
+
 
 def main():
     app = QApplication([])
