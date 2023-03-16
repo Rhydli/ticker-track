@@ -13,6 +13,10 @@ def update_cfg(): # convert list data back into str and save into ini file
 config = configparser.ConfigParser()
 config.read('tt_config.ini') # store config file in memory on load for script use
 
+# excel config
+BOOK_NAME = config['FILE']['book']
+SHEET_NAME = config['FILE']['sheet']
+
 # config parser stores all values as strings, convert to lists
 ACTIVE_TICKERS = ast.literal_eval(config['TICKERS']['active_tickers'])
 INACTIVE_TICKERS = ast.literal_eval(config['TICKERS']['inactive_tickers'])

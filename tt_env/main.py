@@ -1,11 +1,18 @@
 import requests
 import openpyxl
 import api_key
+import logging
 import config as cfg
 from PyQt6.QtWidgets import *
 from PyQt6 import uic
 
-'''logging history of console'''
+# log setup
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(levelname)s:%(name)s:%(asctime)s:%(message)s')
+file_handler = logging.FileHandler('repository.log')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
 
 class MyGui(QMainWindow):
 
@@ -16,9 +23,10 @@ class MyGui(QMainWindow):
         self.setWindowTitle('Ticker Track')
         self.active_list.addItems(cfg.ACTIVE_TICKERS[:])
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
+        self.path_line_edit.setText(cfg.BOOK_NAME)
         self.load_date()
         self.log_msg = ''
-        self.file_path = ''
+        self.file_path = self.path_line_edit.text()
         self.add_button.clicked.connect(lambda: self.add((self.ticker_line_edit.text().upper())))
         self.toggle_button.clicked.connect(lambda: self.toggle(self.ticker_line_edit.text().upper()))
         self.delete_button.clicked.connect(lambda: self.delete(self.ticker_line_edit.text().upper()))
@@ -36,7 +44,13 @@ class MyGui(QMainWindow):
         self.path_line_edit.setText(file_name[0]) # show user selection in UI
         self.file_path = self.path_line_edit.text() # full file path for RUN command
         self.ui_refresh()
+        self.save_file_path()
 
+    def save_file_path(self):
+        cfg.config.set('FILE', 'book', self.file_path)
+        with open('tt_config.ini', 'w') as configfile:
+            cfg.config.write(configfile)
+        
     def ui_refresh(self):
         self.active_list.clear()
         self.active_list.addItems(cfg.ACTIVE_TICKERS[:])
@@ -54,24 +68,29 @@ class MyGui(QMainWindow):
                 if bool(response.json()['s'] == 'ok'): # check API for ticker data
                     if ticker in cfg.ACTIVE_TICKERS:
                         self.log_msg = f'"{ticker}" already in active tickers.'
+                        logger.info(f'"{ticker}" already in active tickers.')
                         self.ui_refresh()
                     elif ticker not in cfg.ACTIVE_TICKERS and ticker not in cfg.INACTIVE_TICKERS:
                         cfg.ACTIVE_TICKERS.append(ticker)
                         cfg.update_cfg()
                         self.log_msg = f'"{ticker}" added to active tickers.'
+                        logger.info(f'"{ticker}" added to active tickers.')
                         self.ui_refresh()
                     else:
                         self.log_msg = f'"{ticker}" already in inactive tickers.'
+                        logger.info(f'"{ticker}" already in inactive tickers.')
                         self.ui_refresh()
                 else:
                     self.log_msg = f'API Response: {response.json()["errmsg"]}, Ticker: "{ticker}"'
+                    logger.error(f'API Response: {response.json()["errmsg"]}, Ticker: "{ticker}"')
                     self.ui_refresh()
             except:
-                '''log errors'''
                 self.log_msg = f'Exception: {response.json()["errmsg"]}'
+                logger.error(f'Exception: {response.json()["errmsg"]}')
                 self.ui_refresh()
         else:
             self.log_msg = 'No Ticker provided.'
+            logger.info('No Ticker provided.')
             self.ui_refresh()
 
     def toggle(self, ticker): # move ticker between active and inactive lists
@@ -81,18 +100,22 @@ class MyGui(QMainWindow):
                 cfg.ACTIVE_TICKERS.remove(ticker)
                 cfg.update_cfg()
                 self.log_msg = f'"{ticker}" moved to inactive tickers.'
+                logger.info(f'"{ticker}" moved to inactive tickers.')
                 self.ui_refresh()
             elif ticker in cfg.INACTIVE_TICKERS:
                 cfg.ACTIVE_TICKERS.append(ticker)
                 cfg.INACTIVE_TICKERS.remove(ticker)
                 cfg.update_cfg()
                 self.log_msg = f'"{ticker}" moved to active tickers.'
+                logger.info(f'"{ticker}" moved to active tickers.')
                 self.ui_refresh()
             else:
                 self.log_msg = f'"{ticker}" ticker has not yet been added.'
+                logger.info(f'"{ticker}" ticker has not yet been added.')
                 self.ui_refresh()
         else:
             self.log_msg = 'No Ticker provided.'
+            logger.info('No Ticker provided.')
             self.ui_refresh()
 
     def delete(self, ticker): # remove ticker from either list
@@ -105,12 +128,15 @@ class MyGui(QMainWindow):
                 finally:
                     cfg.update_cfg()
                     self.log_msg = f'"{ticker}" has been successfully removed.'
+                    logger.info(f'"{ticker}" has been successfully removed.')
                     self.ui_refresh()
             else:
                 self.log_msg = f'Removal unsuccessful. "{ticker}" not found.'
+                logger.info(f'Removal unsuccessful. "{ticker}" not found.')
                 self.ui_refresh()
         else:
             self.log_msg = 'No Ticker provided.'
+            logger.info('No Ticker provided.')
             self.ui_refresh()
         
     def run(self): # export data to file
@@ -139,12 +165,15 @@ class MyGui(QMainWindow):
                     sheet.cell(row=row, column=4).value = c
                 book.save(self.file_path)
                 self.log_msg = f'Saved results to {self.file_path} for {closing_day}.'
+                logger.info(f'Saved results to {self.file_path} for {closing_day}.')
                 self.ui_refresh()
             except:
                 self.log_msg = f'File "{self.file_path}" not found.'
+                logger.info(f'File "{self.file_path}" not found.')
                 self.ui_refresh()
         except:
             self.log_msg = f'"{day_string}" is not a valid date. YYYY-MM-DD.'
+            logger.info(f'"{day_string}" is not a valid date. YYYY-MM-DD.')
             self.ui_refresh()
 
 def main():
