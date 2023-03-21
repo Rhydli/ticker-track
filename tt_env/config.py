@@ -12,6 +12,14 @@ def update_cfg(): # convert list data back into str and save into ini file
         config.write(configfile)
 
 
+def isfloat(s): # return true if passed str can be converted into a float
+        try:
+            float(s)
+            return True
+        except ValueError:
+            return False
+
+
 config = configparser.ConfigParser()
 config.read('tt_config.ini') # store config file in memory on load for script use
 

@@ -142,6 +142,8 @@ class MyGui(QMainWindow):
             self.log_msg = 'No Ticker provided.'
             logger.info('No Ticker provided.')
             self.ui_refresh()
+
+    
         
     def run(self): # export data to file
         day_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}' # pull date from UI user input
@@ -151,7 +153,11 @@ class MyGui(QMainWindow):
             close_prices = []
             for t in cfg.ACTIVE_TICKERS: # GET requests to API
                 url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={closing_day}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
-                gets.append(requests.request("GET", url))
+                response = requests.request("GET", url)
+                if cfg.isfloat(response.text): # check for valid price data and log exceptions
+                    gets.append(response)
+                else:
+                    logger.error(f'API Response: {response.text.strip()} for "{t}" on "{closing_day}"')
             for g in gets: # pull and store string data from GET requests
                 close_prices.append(g.text)
             try: # write and save data
@@ -178,9 +184,9 @@ class MyGui(QMainWindow):
         except:
             self.log_msg = f'"{day_string}" is not a valid date. YYYY-MM-DD.'
             logger.info(f'"{day_string}" is not a valid date. YYYY-MM-DD.')
-            self.ui_refresh()
-
-
+            self.ui_refresh
+    
+    
 def main():
     app = QApplication([])
     window = MyGui()
