@@ -26,16 +26,24 @@ class MyGui(QMainWindow):
         self.active_list.addItems(cfg.ACTIVE_TICKERS[:])
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
         self.path_line_edit.setText(cfg.BOOK_NAME)
-        self.load_date()
+        self.is_running = False
         self.log_msg = ''
         self.file_path = self.path_line_edit.text()
-        self.path_line_edit.setToolTip(self.path_line_edit.text())
+        self.path_line_edit.textChanged.connect(self.ui_refresh)
         self.add_button.clicked.connect(lambda: self.add((self.ticker_line_edit.text().upper())))
         self.toggle_button.clicked.connect(lambda: self.toggle(self.ticker_line_edit.text().upper()))
         self.delete_button.clicked.connect(lambda: self.delete(self.ticker_line_edit.text().upper()))
         self.reset_date_button.clicked.connect(self.load_date)
         self.browse_button.clicked.connect(self.browse)
         self.run_button.clicked.connect(self.run)
+        self.ui_refresh()
+        self.load_date()
+
+    def toggle_run_button(self):
+        if self.file_path and not self.is_running:
+            self.run_button.setEnabled(True)
+        else:
+            self.run_button.setEnabled(False)
 
     def load_date(self):
         self.year_line_edit.setText(cfg.YEAR)
@@ -45,9 +53,6 @@ class MyGui(QMainWindow):
     def browse(self):
         file_name = QFileDialog.getOpenFileName(self, "Open File", "") # get file path from user selection
         self.path_line_edit.setText(file_name[0]) # show user selection in UI
-        self.file_path = self.path_line_edit.text() # full file path for RUN command
-        self.ui_refresh()
-        self.save_file_path()
 
     def save_file_path(self):
         cfg.config.set('FILE', 'book', self.file_path)
@@ -61,6 +66,10 @@ class MyGui(QMainWindow):
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
         self.console_message.setText(self.log_msg)
         self.console_message.setToolTip(self.log_msg)
+        self.path_line_edit.setToolTip(self.path_line_edit.text())
+        self.file_path = self.path_line_edit.text()
+        self.save_file_path()
+        self.toggle_run_button()
 
     def add(self, input): # add ticker to active list
         my_dict = {46: None, 63: None} # remove unwanted characters from user input and check if valid
@@ -143,23 +152,24 @@ class MyGui(QMainWindow):
             logger.info('No Ticker provided.')
             self.ui_refresh()
 
-    
-        
     def run(self): # export data to file
+        self.is_running = True
         day_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}' # pull date from UI user input
+        closing_day = str(cfg.parse(day_string))[:10] # format date
         try:
-            closing_day = str(cfg.parse(day_string))[:10] # format date
             gets = []
-            close_prices = []
             for t in cfg.ACTIVE_TICKERS: # GET requests to API
                 url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={closing_day}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
                 response = requests.request("GET", url)
-                if cfg.isfloat(response.text): # check for valid price data and log exceptions
-                    gets.append(response)
-                else:
+                gets.append(response)
+                if not cfg.isfloat(response.text.strip()):
                     logger.error(f'API Response: {response.text.strip()} for "{t}" on "{closing_day}"')
-            for g in gets: # pull and store string data from GET requests
-                close_prices.append(g.text)
+            close_prices = []
+            for g in gets: # store price data from GET requests
+                if cfg.isfloat(g.text): # check for valid price data and log exceptions
+                    close_prices.append(g.text)
+                else:
+                    close_prices.append('No price data.')
             try: # write and save data
                 book = openpyxl.load_workbook(self.file_path)
                 sheet = book[cfg.SHEET_NAME]
@@ -184,7 +194,10 @@ class MyGui(QMainWindow):
         except:
             self.log_msg = f'"{day_string}" is not a valid date. YYYY-MM-DD.'
             logger.info(f'"{day_string}" is not a valid date. YYYY-MM-DD.')
-            self.ui_refresh
+            self.ui_refresh()
+        finally:
+            self.is_running = False
+            self.ui_refresh()
     
     
 def main():
