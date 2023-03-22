@@ -1,7 +1,6 @@
 import logging
 import requests
 import openpyxl
-from traceback import format_exc
 from PyQt6.QtWidgets import *
 from PyQt6 import uic
 import api_key
@@ -39,27 +38,32 @@ class MyGui(QMainWindow):
         self.run_button.clicked.connect(self.run)
         self.ui_refresh()
         self.load_date()
-
+    
+    # enable or disable run button based on file path
     def toggle_run_button(self):
         if self.file_path and not self.is_running:
             self.run_button.setEnabled(True)
         else:
             self.run_button.setEnabled(False)
 
+    # init last closing day on startup or reset
     def load_date(self):
         self.year_line_edit.setText(cfg.YEAR)
         self.month_line_edit.setText(cfg.MONTH)
         self.day_line_edit.setText(cfg.DAY)
 
+    # get file path from user selection and show user selection in UI
     def browse(self):
-        file_name = QFileDialog.getOpenFileName(self, "Open File", "") # get file path from user selection
-        self.path_line_edit.setText(file_name[0]) # show user selection in UI
+        file_name = QFileDialog.getOpenFileName(self, "Open File", "")
+        self.path_line_edit.setText(file_name[0]) 
 
+    # store current file path in config
     def save_file_path(self):
         cfg.config.set('FILE', 'book', self.file_path)
         with open('tt_config.ini', 'w') as configfile:
             cfg.config.write(configfile)
-        
+    
+    # update ui
     def ui_refresh(self):
         self.active_list.clear()
         self.active_list.addItems(cfg.ACTIVE_TICKERS[:])
@@ -72,14 +76,16 @@ class MyGui(QMainWindow):
         self.save_file_path()
         self.toggle_run_button()
 
-    def add(self, input): # add ticker to active list
-        my_dict = {46: None, 63: None} # remove unwanted characters from user input and check if valid
+    # validate and add ticker input to active list
+    def add(self, input):
+        my_dict = {46: None, 63: None}
         ticker = input.translate(my_dict)
         if ticker and not ticker.isspace():
             url = f'https://api.marketdata.app/v1/stocks/quotes/{ticker}/?token={api_key.API_KEY}'
             response = requests.request("GET", url)
-            try: 
-                if bool(response.json()['s'] == 'ok'): # check API for ticker data
+            # check API for ticker data
+            try:
+                if bool(response.json()['s'] == 'ok'):
                     if ticker in cfg.ACTIVE_TICKERS:
                         self.log_msg = f'"{ticker}" already in active tickers.'
                         logger.info(f'"{ticker}" already in active tickers.')
@@ -107,7 +113,8 @@ class MyGui(QMainWindow):
             logger.info('No Ticker provided.')
             self.ui_refresh()
 
-    def toggle(self, ticker): # move ticker between active and inactive lists
+    # move ticker between active and inactive lists
+    def toggle(self, ticker):
         if ticker and not ticker.isspace():
             if ticker in cfg.ACTIVE_TICKERS:
                 cfg.INACTIVE_TICKERS.append(ticker)
@@ -132,7 +139,8 @@ class MyGui(QMainWindow):
             logger.info('No Ticker provided.')
             self.ui_refresh()
 
-    def delete(self, ticker): # remove ticker from either list
+    # remove ticker from either list
+    def delete(self, ticker):
         if ticker and not ticker.isspace():
             if ticker in cfg.ACTIVE_TICKERS or ticker in cfg.INACTIVE_TICKERS:
                 try:
@@ -152,13 +160,14 @@ class MyGui(QMainWindow):
             self.log_msg = 'No Ticker provided.'
             logger.info('No Ticker provided.')
             self.ui_refresh()
+
     # export data to file
     def run(self):
         self.is_running = True
         # pull date from UI user input
         day_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
         try:
-            # format date
+            # format date to string
             closing_day = str(cfg.parse(day_string))[:10]
             gets = []
             # GET requests to API
