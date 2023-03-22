@@ -1,10 +1,15 @@
+# Standard library imports
 import logging
-import requests
-import openpyxl
-from PyQt6.QtWidgets import *
-from PyQt6 import uic
+
+# Third-party library imports
+from PyQt6.QtWidgets import QMainWindow, QFileDialog, QApplication
+from openpyxl import load_workbook
+from requests import request
+
+# Local application imports
 import api_key
 import config as cfg
+from PyQt6 import uic
 
 
 # log setup
@@ -82,7 +87,7 @@ class MyGui(QMainWindow):
         ticker = input.translate(my_dict)
         if ticker and not ticker.isspace():
             url = f'https://api.marketdata.app/v1/stocks/quotes/{ticker}/?token={api_key.API_KEY}'
-            response = requests.request("GET", url)
+            response = request("GET", url)
             # check API for ticker data
             try:
                 if bool(response.json()['s'] == 'ok'):
@@ -173,7 +178,7 @@ class MyGui(QMainWindow):
             # GET requests to API
             for t in cfg.ACTIVE_TICKERS:
                 url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={closing_day}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
-                response = requests.request("GET", url)
+                response = request("GET", url)
                 gets.append(response)
                 if not cfg.isfloat(response.text.strip()):
                     logger.error(f'API Response: {response.text.strip()} for "{t}" on "{closing_day}"')
@@ -186,7 +191,7 @@ class MyGui(QMainWindow):
                     close_prices.append('No price data.')
             # write and save data
             try:
-                book = openpyxl.load_workbook(self.file_path)
+                book = load_workbook(self.file_path)
                 sheet = book[cfg.SHEET_NAME]
                 for i in range(len(close_prices)):
                     sheet.cell(row = i + 1, column = 1).value = closing_day
