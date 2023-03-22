@@ -1,6 +1,7 @@
 import logging
 import requests
 import openpyxl
+from traceback import format_exc
 from PyQt6.QtWidgets import *
 from PyQt6 import uic
 import api_key
@@ -151,26 +152,31 @@ class MyGui(QMainWindow):
             self.log_msg = 'No Ticker provided.'
             logger.info('No Ticker provided.')
             self.ui_refresh()
-
-    def run(self): # export data to file
+    # export data to file
+    def run(self):
         self.is_running = True
-        day_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}' # pull date from UI user input
-        closing_day = str(cfg.parse(day_string))[:10] # format date
+        # pull date from UI user input
+        day_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
         try:
+            # format date
+            closing_day = str(cfg.parse(day_string))[:10]
             gets = []
-            for t in cfg.ACTIVE_TICKERS: # GET requests to API
+            # GET requests to API
+            for t in cfg.ACTIVE_TICKERS:
                 url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={closing_day}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
                 response = requests.request("GET", url)
                 gets.append(response)
                 if not cfg.isfloat(response.text.strip()):
                     logger.error(f'API Response: {response.text.strip()} for "{t}" on "{closing_day}"')
             close_prices = []
-            for g in gets: # store price data from GET requests
-                if cfg.isfloat(g.text): # check for valid price data and log exceptions
+            # store price data from GET requests, check for valid price data and log exceptions
+            for g in gets:
+                if cfg.isfloat(g.text):
                     close_prices.append(g.text)
                 else:
                     close_prices.append('No price data.')
-            try: # write and save data
+            # write and save data
+            try:
                 book = openpyxl.load_workbook(self.file_path)
                 sheet = book[cfg.SHEET_NAME]
                 for i in range(len(close_prices)):
@@ -191,14 +197,12 @@ class MyGui(QMainWindow):
                 self.log_msg = f'File "{self.file_path}" not found.'
                 logger.info(f'File "{self.file_path}" not found.')
                 self.ui_refresh()
-        except:
-            self.log_msg = f'"{day_string}" is not a valid date. YYYY-MM-DD.'
-            logger.info(f'"{day_string}" is not a valid date. YYYY-MM-DD.')
-            self.ui_refresh()
+        except ValueError as ve:
+            self.log_msg = f'An error occurred: {ve}'
+            logger.error(f'An error occurred: {ve}')
         finally:
             self.is_running = False
             self.ui_refresh()
-    
     
 def main():
     app = QApplication([])
