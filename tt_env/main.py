@@ -32,6 +32,7 @@ class MyGui(QMainWindow):
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
         self.path_line_edit.setText(cfg.BOOK_NAME)
         self.is_running = False
+        self.to_range_enabled = True
         self.log_msg = ''
         self.file_path = self.path_line_edit.text()
         self.path_line_edit.textChanged.connect(self.ui_refresh)
@@ -41,9 +42,28 @@ class MyGui(QMainWindow):
         self.reset_date_button.clicked.connect(self.load_date)
         self.browse_button.clicked.connect(self.browse)
         self.run_button.clicked.connect(self.run)
+        self.to_button.clicked.connect(self.date_range_toggle)
+        self.test_button.clicked.connect(self.test)
         self.ui_refresh()
         self.load_date()
-    
+        self.date_range_toggle()
+
+    def test(self):
+        pass
+
+    # toggle 'to' radio button date range fields and variable flags
+    def date_range_toggle(self):
+        if not self.to_range_enabled:
+            self.year_range_end.setEnabled(True)
+            self.month_range_end.setEnabled(True)
+            self.day_range_end.setEnabled(True)
+            self.to_range_enabled = True
+        else:
+            self.year_range_end.setEnabled(False)
+            self.month_range_end.setEnabled(False)
+            self.day_range_end.setEnabled(False)
+            self.to_range_enabled = False
+
     # enable or disable run button based on file path
     def toggle_run_button(self):
         if self.file_path and not self.is_running:
@@ -171,13 +191,20 @@ class MyGui(QMainWindow):
         self.is_running = True
         # pull date from UI user input
         day_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
+        range_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
         try:
             # format date to string
             closing_day = str(cfg.parse(day_string))[:10]
             gets = []
             # GET requests to API
             for t in cfg.ACTIVE_TICKERS:
-                url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={closing_day}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
+                if self.to_range_enabled:
+                    print('range')
+                    end_range = str(cfg.parse(range_string))[:10]
+                    url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&from={closing_day}&to={end_range}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
+                else:
+                    print('single day')
+                    url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={closing_day}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
                 response = request("GET", url)
                 gets.append(response)
                 if not cfg.isfloat(response.text.strip()):
@@ -191,6 +218,9 @@ class MyGui(QMainWindow):
                     close_prices.append('No price data.')
             # write and save data
             try:
+
+
+                
                 book = load_workbook(self.file_path)
                 sheet = book[cfg.SHEET_NAME]
                 for i in range(len(close_prices)):
@@ -203,6 +233,9 @@ class MyGui(QMainWindow):
                 for c in close_prices:
                     row += 1
                     sheet.cell(row=row, column=4).value = c
+
+
+
                 book.save(self.file_path)
                 self.log_msg = f'Saved results to {self.file_path} for {closing_day}.'
                 logger.info(f'Saved results to {self.file_path} for {closing_day}.')

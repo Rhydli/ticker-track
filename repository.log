@@ -1,0 +1,12 @@
+ERROR:__main__:2023-03-28 10:09:39,310:An error occurred: String does not contain a date: --
+INFO:__main__:2023-03-28 10:09:52,903:Saved results to C:/Users/theni/pyproj/test.xlsx for 2023-03-27.
+ERROR:__main__:2023-03-28 10:11:23,649:API Response: error,"The start date/time is after the end date/time. Check each date parameter for errors. If the two dates are correct, they may be inverted." for "BNDX" on "2023-03-25"
+ERROR:__main__:2023-03-28 10:11:23,815:API Response: error,"The start date/time is after the end date/time. Check each date parameter for errors. If the two dates are correct, they may be inverted." for "EGIS" on "2023-03-25"
+ERROR:__main__:2023-03-28 10:11:23,983:API Response: error,"The start date/time is after the end date/time. Check each date parameter for errors. If the two dates are correct, they may be inverted." for "EPP" on "2023-03-25"
+ERROR:__main__:2023-03-28 10:11:24,147:API Response: error,"The start date/time is after the end date/time. Check each date parameter for errors. If the two dates are correct, they may be inverted." for "EWC" on "2023-03-25"
+ERROR:__main__:2023-03-28 10:11:24,312:API Response: error,"The start date/time is after the end date/time. Check each date parameter for errors. If the two dates are correct, they may be inverted." for "EWD" on "2023-03-25"
+ERROR:__main__:2023-03-28 10:11:24,481:API Response: error,"The start date/time is after the end date/time. Check each date parameter for errors. If the two dates are correct, they may be inverted." for "EWJ" on "2023-03-25"
+ERROR:__main__:2023-03-28 10:11:24,650:API Response: error,"The start date/time is after the end date/time. Check each date parameter for errors. If the two dates are correct, they may be inverted." for "EWL" on "2023-03-25"
+INFO:__main__:2023-03-28 10:11:24,664:Saved results to C:/Users/theni/pyproj/test.xlsx for 2023-03-25.
+INFO:__main__:2023-03-28 10:32:12,716:File "C:/Users/theni/pyproj/test.xlsx" not found.
+INFO:__main__:2023-03-28 10:35:33,063:Saved results to C:/Users/theni/pyproj/test.xlsx for 2023-03-27.
