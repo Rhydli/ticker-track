@@ -32,7 +32,7 @@ class MyGui(QMainWindow):
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
         self.path_line_edit.setText(cfg.BOOK_NAME)
         self.is_running = False
-        self.to_range_enabled = True
+        self.single_radio.setChecked(True)
         self.log_msg = ''
         self.file_path = self.path_line_edit.text()
         self.path_line_edit.textChanged.connect(self.ui_refresh)
@@ -42,27 +42,32 @@ class MyGui(QMainWindow):
         self.reset_date_button.clicked.connect(self.load_date)
         self.browse_button.clicked.connect(self.browse)
         self.run_button.clicked.connect(self.run)
-        self.to_button.clicked.connect(self.date_range_toggle)
-        self.test_button.clicked.connect(self.test)
+        self.single_radio.toggled.connect(self.toggle_date_range)
+        self.range_radio.toggled.connect(self.toggle_date_range)
         self.ui_refresh()
         self.load_date()
-        self.date_range_toggle()
+        self.toggle_date_range()
+        self.test_button.clicked.connect(self.test)
 
     def test(self):
         pass
 
-    # toggle 'to' radio button date range fields and variable flags
-    def date_range_toggle(self):
-        if not self.to_range_enabled:
-            self.year_range_end.setEnabled(True)
-            self.month_range_end.setEnabled(True)
-            self.day_range_end.setEnabled(True)
-            self.to_range_enabled = True
-        else:
-            self.year_range_end.setEnabled(False)
-            self.month_range_end.setEnabled(False)
-            self.day_range_end.setEnabled(False)
-            self.to_range_enabled = False
+    # toggle date range ui widget visibility
+    def toggle_date_range(self):
+        if self.single_radio.isChecked():
+            self.year_range_end.setVisible(False)
+            self.month_range_end.setVisible(False)
+            self.day_range_end.setVisible(False)
+            self.date_div_3.setVisible(False)
+            self.date_div_4.setVisible(False)
+            self.from_label.setVisible(False)
+        elif self.range_radio.isChecked():
+            self.year_range_end.setVisible(True)
+            self.month_range_end.setVisible(True)
+            self.day_range_end.setVisible(True)
+            self.date_div_3.setVisible(True)
+            self.date_div_4.setVisible(True)
+            self.from_label.setVisible(True)
 
     # enable or disable run button based on file path
     def toggle_run_button(self):
@@ -76,6 +81,9 @@ class MyGui(QMainWindow):
         self.year_line_edit.setText(cfg.YEAR)
         self.month_line_edit.setText(cfg.MONTH)
         self.day_line_edit.setText(cfg.DAY)
+        self.year_range_end.setText(cfg.YEAR)
+        self.month_range_end.setText(cfg.MONTH)
+        self.day_range_end.setText(cfg.DAY)
 
     # get file path from user selection and show user selection in UI
     def browse(self):
@@ -195,18 +203,19 @@ class MyGui(QMainWindow):
         try:
             # format date to string
             closing_day = str(cfg.parse(day_string))[:10]
+            from_day = str(cfg.parse(range_string))[:10]
             gets = []
             # GET requests to API
             for t in cfg.ACTIVE_TICKERS:
-                if self.to_range_enabled:
-                    print('range')
-                    end_range = str(cfg.parse(range_string))[:10]
-                    url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&from={closing_day}&to={end_range}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
-                else:
+                if self.single_radio.isChecked():
                     print('single day')
                     url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={closing_day}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
+                elif self.range_radio.isChecked():
+                    print('range')
+                    url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&from={from_day}&to={closing_day}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
                 response = request("GET", url)
                 gets.append(response)
+                print(response.text)
                 if not cfg.isfloat(response.text.strip()):
                     logger.error(f'API Response: {response.text.strip()} for "{t}" on "{closing_day}"')
             close_prices = []

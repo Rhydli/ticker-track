@@ -118,7 +118,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>80</y>
+      <y>110</y>
       <width>51</width>
       <height>30</height>
      </rect>
@@ -131,7 +131,7 @@
     <property name="geometry">
      <rect>
       <x>115</x>
-      <y>80</y>
+      <y>110</y>
       <width>20</width>
       <height>30</height>
      </rect>
@@ -144,7 +144,7 @@
     <property name="geometry">
      <rect>
       <x>70</x>
-      <y>80</y>
+      <y>110</y>
       <width>40</width>
       <height>30</height>
      </rect>
@@ -183,7 +183,7 @@
     <property name="geometry">
      <rect>
       <x>131</x>
-      <y>80</y>
+      <y>110</y>
       <width>41</width>
       <height>30</height>
      </rect>
@@ -206,7 +206,7 @@
     <property name="geometry">
      <rect>
       <x>176</x>
-      <y>80</y>
+      <y>110</y>
       <width>20</width>
       <height>30</height>
      </rect>
@@ -219,7 +219,7 @@
     <property name="geometry">
      <rect>
       <x>190</x>
-      <y>80</y>
+      <y>110</y>
       <width>40</width>
       <height>30</height>
      </rect>
@@ -360,7 +360,7 @@
     <property name="geometry">
      <rect>
       <x>240</x>
-      <y>80</y>
+      <y>110</y>
       <width>40</width>
       <height>30</height>
      </rect>
@@ -373,7 +373,7 @@
     <property name="geometry">
      <rect>
       <x>115</x>
-      <y>150</y>
+      <y>160</y>
       <width>20</width>
       <height>30</height>
      </rect>
@@ -386,7 +386,7 @@
     <property name="geometry">
      <rect>
       <x>70</x>
-      <y>150</y>
+      <y>160</y>
       <width>40</width>
       <height>30</height>
      </rect>
@@ -412,7 +412,7 @@
     <property name="geometry">
      <rect>
       <x>190</x>
-      <y>150</y>
+      <y>160</y>
       <width>40</width>
       <height>30</height>
      </rect>
@@ -435,7 +435,7 @@
     <property name="geometry">
      <rect>
       <x>131</x>
-      <y>150</y>
+      <y>160</y>
       <width>41</width>
       <height>30</height>
      </rect>
@@ -458,7 +458,7 @@
     <property name="geometry">
      <rect>
       <x>176</x>
-      <y>150</y>
+      <y>160</y>
       <width>20</width>
       <height>30</height>
      </rect>
@@ -467,30 +467,62 @@
      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:12pt; font-weight:600;&quot;&gt;/&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
    </widget>
-   <widget class="QRadioButton" name="to_button">
+   <widget class="QRadioButton" name="range_radio">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>150</y>
-      <width>50</width>
+      <x>70</x>
+      <y>70</y>
+      <width>80</width>
       <height>30</height>
      </rect>
     </property>
     <property name="text">
-     <string>TO:</string>
+     <string>Range</string>
     </property>
+    <attribute name="buttonGroup">
+     <string notr="true">radio_group</string>
+    </attribute>
    </widget>
    <widget class="QPushButton" name="test_button">
     <property name="geometry">
      <rect>
-      <x>260</x>
-      <y>140</y>
-      <width>100</width>
-      <height>60</height>
+      <x>475</x>
+      <y>10</y>
+      <width>40</width>
+      <height>30</height>
      </rect>
     </property>
     <property name="text">
      <string>TEST</string>
+    </property>
+   </widget>
+   <widget class="QRadioButton" name="single_radio">
+    <property name="geometry">
+     <rect>
+      <x>70</x>
+      <y>50</y>
+      <width>80</width>
+      <height>30</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Single Day</string>
+    </property>
+    <attribute name="buttonGroup">
+     <string notr="true">radio_group</string>
+    </attribute>
+   </widget>
+   <widget class="QLabel" name="from_label">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>160</y>
+      <width>51</width>
+      <height>30</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;FROM:&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
    </widget>
   </widget>
@@ -508,4 +540,7 @@
  </widget>
  <resources/>
  <connections/>
+ <buttongroups>
+  <buttongroup name="radio_group"/>
+ </buttongroups>
 </ui>
