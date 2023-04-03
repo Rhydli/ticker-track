@@ -1,5 +1,6 @@
 # Standard library imports
 import logging
+from csv import reader
 
 # Third-party library imports
 from PyQt6.QtWidgets import QMainWindow, QFileDialog, QApplication
@@ -51,6 +52,12 @@ class MyGui(QMainWindow):
 
     def test(self):
         pass
+        '''
+        sheet request
+        Preferred workflow is to clear sheet2,
+        copy contents of sheet1 to sheet2,
+        clear sheet1, write new data to sheet1
+        '''
 
     # toggle date range ui widget visibility
     def toggle_date_range(self):
@@ -198,56 +205,48 @@ class MyGui(QMainWindow):
     def run(self):
         self.is_running = True
         # pull date from UI user input
-        day_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
-        range_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
+        date_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
+        from_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
         try:
-            # format date to string
-            closing_day = str(cfg.parse(day_string))[:10]
-            from_day = str(cfg.parse(range_string))[:10]
-            gets = []
+            # create list of dates from UI
+            dates = cfg.generate_date_range(from_string, date_string)
+            # create a list to store the closing prices
+            prices = []
+            # create dictionary to store "date:[(ticker,price)]"
+            dates_to_prices = {}
             # GET requests to API
             for t in cfg.ACTIVE_TICKERS:
-                if self.single_radio.isChecked():
-                    print('single day')
-                    url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={closing_day}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
-                elif self.range_radio.isChecked():
-                    print('range')
-                    url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&from={from_day}&to={closing_day}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
-                response = request("GET", url)
-                gets.append(response)
-                print(response.text)
-                if not cfg.isfloat(response.text.strip()):
-                    logger.error(f'API Response: {response.text.strip()} for "{t}" on "{closing_day}"')
-            close_prices = []
-            # store price data from GET requests, check for valid price data and log exceptions
-            for g in gets:
-                if cfg.isfloat(g.text):
-                    close_prices.append(g.text)
-                else:
-                    close_prices.append('No price data.')
-            # write and save data
+                for date in dates:
+                    url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={date}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
+                    response = request("GET", url)
+                    # check if response is a valid numerical price
+                    if cfg.isfloat(response.text.strip()):
+                        price = float(response.text.strip())
+                        dates_to_prices.setdefault(date, []).append((t, price))
+                    else:
+                        logger.error(f'API Response: {response.text.strip()} for "{t}" on "{date}"')
+                        dates_to_prices.setdefault(date, []).append((t, None))
+            # write the data to the Excel file
             try:
-
-
-                
                 book = load_workbook(self.file_path)
                 sheet = book[cfg.SHEET_NAME]
-                for i in range(len(close_prices)):
-                    sheet.cell(row = i + 1, column = 1).value = closing_day
-                row = 0   
-                for t in cfg.ACTIVE_TICKERS:
-                    row += 1
-                    sheet.cell(row=row, column=2).value = t
-                row = 0
-                for c in close_prices:
-                    row += 1
-                    sheet.cell(row=row, column=4).value = c
-
-
-
+                row = 1
+                for date_idx, date in enumerate(dates_to_prices):
+                    idx_row = 1
+                    for ticker_idx, (ticker, price) in enumerate(dates_to_prices[date]):
+                        sheet.cell(row=row, column=1).value = date
+                        sheet.cell(row=row, column=2).value = ticker
+                        sheet.cell(row=row, column=4).value = price
+                        if date_idx > 0:
+                            offset = date_idx * 6
+                            sheet.cell(row=idx_row, column=1 + offset).value = date
+                            sheet.cell(row=idx_row, column=2 + offset).value = ticker
+                            sheet.cell(row=idx_row, column=4 + offset).value = price
+                            idx_row += 1
+                        row += 1
                 book.save(self.file_path)
-                self.log_msg = f'Saved results to {self.file_path} for {closing_day}.'
-                logger.info(f'Saved results to {self.file_path} for {closing_day}.')
+                self.log_msg = f'Saved results to {self.file_path}'
+                logger.info(f'Saved results to {self.file_path}')
                 self.ui_refresh()
             except:
                 self.log_msg = f'File "{self.file_path}" not found.'
@@ -255,11 +254,12 @@ class MyGui(QMainWindow):
                 self.ui_refresh()
         except ValueError as ve:
             self.log_msg = f'An error occurred: {ve}'
-            logger.error(f'An error occurred: {ve}')
+            logger.error(f'An error occurred: %s', ve, exc_info=True)
         finally:
             self.is_running = False
             self.ui_refresh()
-    
+
+
 def main():
     app = QApplication([])
     window = MyGui()
