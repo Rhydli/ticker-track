@@ -5,6 +5,7 @@ from csv import reader
 # Third-party library imports
 from PyQt6.QtWidgets import QMainWindow, QFileDialog, QApplication
 from openpyxl import load_workbook
+from openpyxl.utils.cell import get_column_letter # used to extract the column letter from cell.coordinate so that it can be used to access the cell in Sheet2.
 from requests import request
 
 # Local application imports
@@ -209,7 +210,10 @@ class MyGui(QMainWindow):
         from_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
         try:
             # create list of dates from UI
-            dates = cfg.generate_date_range(from_string, date_string)
+            if self.single_radio.isChecked():
+                dates = cfg.generate_date_range(date_string, date_string)
+            elif self.range_radio.isChecked():
+                dates = cfg.generate_date_range(from_string, date_string)
             # create a list to store the closing prices
             prices = []
             # create dictionary to store "date:[(ticker,price)]"
@@ -226,10 +230,11 @@ class MyGui(QMainWindow):
                     else:
                         logger.error(f'API Response: {response.text.strip()} for "{t}" on "{date}"')
                         dates_to_prices.setdefault(date, []).append((t, None))
+
             # write the data to the Excel file
             try:
                 book = load_workbook(self.file_path)
-                sheet = book[cfg.SHEET_NAME]
+                sheet = book['Sheet1']
                 row = 1
                 for date_idx, date in enumerate(dates_to_prices):
                     idx_row = 1
@@ -245,6 +250,7 @@ class MyGui(QMainWindow):
                             idx_row += 1
                         row += 1
                 book.save(self.file_path)
+                
                 self.log_msg = f'Saved results to {self.file_path}'
                 logger.info(f'Saved results to {self.file_path}')
                 self.ui_refresh()
