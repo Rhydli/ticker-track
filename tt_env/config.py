@@ -51,7 +51,6 @@ config.read('tt_config.ini')
 
 # excel config
 BOOK_NAME = config['FILE']['book']
-SHEET_NAME = config['FILE']['sheet']
 
 # configparser stores all values as strings, convert to lists
 ACTIVE_TICKERS = ast.literal_eval(config['TICKERS']['active_tickers'])

@@ -5,7 +5,6 @@ from csv import reader
 # Third-party library imports
 from PyQt6.QtWidgets import QMainWindow, QFileDialog, QApplication
 from openpyxl import load_workbook
-from openpyxl.utils.cell import get_column_letter # used to extract the column letter from cell.coordinate so that it can be used to access the cell in Sheet2.
 from requests import request
 
 # Local application imports
@@ -49,16 +48,6 @@ class MyGui(QMainWindow):
         self.ui_refresh()
         self.load_date()
         self.toggle_date_range()
-        self.test_button.clicked.connect(self.test)
-
-    def test(self):
-        pass
-        '''
-        sheet request
-        Preferred workflow is to clear sheet2,
-        copy contents of sheet1 to sheet2,
-        clear sheet1, write new data to sheet1
-        '''
 
     # toggle date range ui widget visibility
     def toggle_date_range(self):
@@ -230,9 +219,26 @@ class MyGui(QMainWindow):
                     else:
                         logger.error(f'API Response: {response.text.strip()} for "{t}" on "{date}"')
                         dates_to_prices.setdefault(date, []).append((t, None))
-
-            # write the data to the Excel file
+            # write data to Excel file
             try:
+                # load the workbook and delete Sheet2 if it exists
+                book = load_workbook(self.file_path)
+                if 'Sheet2' in book.sheetnames:
+                    del book['Sheet2']
+                    book.save(self.file_path)
+                # create Sheet2 and copy the data from Sheet1
+                sheet1 = book['Sheet1']
+                if 'Sheet2' not in book.sheetnames:
+                    sheet2 = book.create_sheet('Sheet2')
+                    book.save(self.file_path)
+                    for row in sheet1.rows:
+                        values = [cell.value for cell in row]
+                        sheet2.append(values)
+                        book.save(self.file_path)
+                # clear all rows in Sheet1
+                sheet1.delete_rows(1, sheet1.max_row)
+                book.save(self.file_path)
+                # write newest data to Sheet1               
                 book = load_workbook(self.file_path)
                 sheet = book['Sheet1']
                 row = 1
@@ -250,7 +256,6 @@ class MyGui(QMainWindow):
                             idx_row += 1
                         row += 1
                 book.save(self.file_path)
-                
                 self.log_msg = f'Saved results to {self.file_path}'
                 logger.info(f'Saved results to {self.file_path}')
                 self.ui_refresh()
