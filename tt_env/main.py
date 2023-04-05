@@ -207,18 +207,48 @@ class MyGui(QMainWindow):
             prices = []
             # create dictionary to store "date:[(ticker,price)]"
             dates_to_prices = {}
-            # GET requests to API
-            for t in cfg.ACTIVE_TICKERS:
-                for date in dates:
-                    url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={date}&headers=false&format=csv&columns=c&token={api_key.API_KEY}'
-                    response = request("GET", url)
-                    # check if response is a valid numerical price
-                    if cfg.isfloat(response.text.strip()):
+            # create variable to store the last numerical price
+            last_price = None
+            # GET requests to API 
+            for t in cfg.ACTIVE_TICKERS: 
+                for date in dates: 
+                    url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={date}&headers=false&format=csv&columns=c&token={api_key.API_KEY}' 
+                    response = request("GET", url) 
+                    # check if response is a valid numerical price 
+                    if cfg.isfloat(response.text.strip()): 
                         price = float(response.text.strip())
-                        dates_to_prices.setdefault(date, []).append((t, price))
+                        # update last numerical price
+                        last_price = price
+                        dates_to_prices.setdefault(date, []).append((t, price)) 
                     else:
-                        logger.error(f'API Response: {response.text.strip()} for "{t}" on "{date}"')
-                        dates_to_prices.setdefault(date, []).append((t, None))
+                        # if last numerical price is not available, go back one day at a time up to 7 days to find a valid price
+                        if last_price is None:
+                            found_valid_price = False
+                            days_back = 0
+                            while not found_valid_price and days_back < 7:
+                                yesterday = cfg.datetime.strptime(date, '%Y-%m-%d') - cfg.timedelta(days=1)
+                                date = cfg.datetime.strftime(yesterday, '%Y-%m-%d')
+                                url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={date}&headers=false&format=csv&columns=c&token={api_key.API_KEY}' 
+                                response = request("GET", url)
+                                if cfg.isfloat(response.text.strip()):
+                                    price = float(response.text.strip())
+                                    last_price = price
+                                    dates_to_prices.setdefault(date, []).append((t, price))
+                                    found_valid_price = True
+                                    print(f'Found valid price {price} for {t} on {date}')
+                                else:
+                                    logger.error(f'API Response: {response.text.strip()} for "{t}" on "{date}"')
+                                    days_back += 1
+                                    print(f'Could not find valid price for {t} on {date}, trying {days_back} days back')
+                            # check if a valid price was found and add to dictionary
+                            if last_price is not None:
+                                dates_to_prices.setdefault(date, []).append((t, last_price))
+                                print(f'Using last valid price {last_price} for {t} on {date}')
+                            else:
+                                print(f'No valid price found for {t} on {date}')
+                        else:
+                            dates_to_prices.setdefault(date, []).append((t, last_price))
+                            print(f'Using last valid price {last_price} for {t} on {date}')
             # write data to Excel file
             try:
                 # load the workbook and delete Sheet2 if it exists
@@ -256,6 +286,10 @@ class MyGui(QMainWindow):
                             idx_row += 1
                         row += 1
                 book.save(self.file_path)
+                '''
+                TODO
+                if statement for logs based on single or ranged
+                '''
                 self.log_msg = f'Saved results to {self.file_path}'
                 logger.info(f'Saved results to {self.file_path}')
                 self.ui_refresh()
