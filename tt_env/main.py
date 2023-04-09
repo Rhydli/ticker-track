@@ -32,7 +32,6 @@ class MyGui(QMainWindow):
         self.active_list.addItems(cfg.ACTIVE_TICKERS[:])
         self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
         self.path_line_edit.setText(cfg.BOOK_NAME)
-        self.is_running = False
         self.single_radio.setChecked(True)
         self.log_msg = ''
         self.file_path = self.path_line_edit.text()
@@ -48,6 +47,13 @@ class MyGui(QMainWindow):
         self.ui_refresh()
         self.load_date()
         self.toggle_date_range()
+
+    # enable or disable run button based on file path
+    def toggle_run_button(self):
+        if self.file_path:
+            self.run_button.setEnabled(True)
+        else:
+            self.run_button.setEnabled(False)
 
     # toggle date range ui widget visibility
     def toggle_date_range(self):
@@ -65,13 +71,6 @@ class MyGui(QMainWindow):
             self.date_div_3.setVisible(True)
             self.date_div_4.setVisible(True)
             self.from_label.setVisible(True)
-
-    # enable or disable run button based on file path
-    def toggle_run_button(self):
-        if self.file_path and not self.is_running:
-            self.run_button.setEnabled(True)
-        else:
-            self.run_button.setEnabled(False)
 
     # init last closing day on startup or reset
     def load_date(self):
@@ -193,7 +192,6 @@ class MyGui(QMainWindow):
 
     # export data to file
     def run(self):
-        self.is_running = True
         # pull date from UI user input
         date_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
         from_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
@@ -211,15 +209,17 @@ class MyGui(QMainWindow):
             last_price = None
             # GET requests to API 
             for t in cfg.ACTIVE_TICKERS: 
-                for date in dates: 
+                # initialize last price for current ticker
+                last_price = None
+                for date in dates:
                     url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={date}&headers=false&format=csv&columns=c&token={api_key.API_KEY}' 
-                    response = request("GET", url) 
-                    # check if response is a valid numerical price 
-                    if cfg.isfloat(response.text.strip()): 
+                    response = request("GET", url)
+                    # check if response is a valid numerical price
+                    if cfg.isfloat(response.text.strip()):
                         price = float(response.text.strip())
-                        # update last numerical price
+                        # update last numerical price for current ticker
                         last_price = price
-                        dates_to_prices.setdefault(date, []).append((t, price)) 
+                        dates_to_prices.setdefault(date, {})[t] = price
                     else:
                         # if last numerical price is not available, go back one day at a time up to 7 days to find a valid price
                         if last_price is None:
@@ -233,7 +233,7 @@ class MyGui(QMainWindow):
                                 if cfg.isfloat(response.text.strip()):
                                     price = float(response.text.strip())
                                     last_price = price
-                                    dates_to_prices.setdefault(date, []).append((t, price))
+                                    dates_to_prices.setdefault(date, {})[t] = price
                                     found_valid_price = True
                                     print(f'Found valid price {price} for {t} on {date}')
                                 else:
@@ -242,14 +242,15 @@ class MyGui(QMainWindow):
                                     print(f'Could not find valid price for {t} on {date}, trying {days_back} days back')
                             # check if a valid price was found and add to dictionary
                             if last_price is not None:
-                                dates_to_prices.setdefault(date, []).append((t, last_price))
+                                dates_to_prices.setdefault(date, {})[t] = last_price
                                 print(f'Using last valid price {last_price} for {t} on {date}')
                             else:
                                 print(f'No valid price found for {t} on {date}')
                         else:
-                            dates_to_prices.setdefault(date, []).append((t, last_price))
+                            dates_to_prices.setdefault(date, {})[t] = last_price
                             print(f'Using last valid price {last_price} for {t} on {date}')
             # write data to Excel file
+            print(dates_to_prices)
             try:
                 # load the workbook and delete Sheet2 if it exists
                 book = load_workbook(self.file_path)
@@ -274,34 +275,43 @@ class MyGui(QMainWindow):
                 row = 1
                 for date_idx, date in enumerate(dates_to_prices):
                     idx_row = 1
-                    for ticker_idx, (ticker, price) in enumerate(dates_to_prices[date]):
-                        sheet.cell(row=row, column=1).value = date
-                        sheet.cell(row=row, column=2).value = ticker
-                        sheet.cell(row=row, column=4).value = price
-                        if date_idx > 0:
-                            offset = date_idx * 6
-                            sheet.cell(row=idx_row, column=1 + offset).value = date
-                            sheet.cell(row=idx_row, column=2 + offset).value = ticker
-                            sheet.cell(row=idx_row, column=4 + offset).value = price
-                            idx_row += 1
-                        row += 1
+                    for ticker in cfg.ACTIVE_TICKERS:
+                        price = dates_to_prices.get(date, {}).get(ticker)
+                        if price is not None:
+                            sheet.cell(row=row, column=1).value = date
+                            sheet.cell(row=row, column=2).value = ticker
+                            sheet.cell(row=row, column=4).value = price
+                            if date_idx > 0:
+                                offset = date_idx * 6
+                                sheet.cell(row=idx_row, column=1 + offset).value = date
+                                sheet.cell(row=idx_row, column=2 + offset).value = ticker
+                                sheet.cell(row=idx_row, column=4 + offset).value = price
+                                idx_row += 1
+                            row += 1
                 book.save(self.file_path)
-                '''
-                TODO
-                if statement for logs based on single or ranged
-                '''
-                self.log_msg = f'Saved results to {self.file_path}'
-                logger.info(f'Saved results to {self.file_path}')
-                self.ui_refresh()
-            except:
-                self.log_msg = f'File "{self.file_path}" not found.'
-                logger.info(f'File "{self.file_path}" not found.')
-                self.ui_refresh()
-        except ValueError as ve:
-            self.log_msg = f'An error occurred: {ve}'
-            logger.error(f'An error occurred: %s', ve, exc_info=True)
+                # get the state of the radio buttons in the UI
+                is_single_date = self.single_radio.isChecked()
+                is_date_range = self.range_radio.isChecked()
+                if is_single_date:
+                    self.log_msg = f'Saved results for single date to {self.file_path}'
+                    logger.info(f'Saved results for single date to {self.file_path}')
+                elif is_date_range:
+                    self.log_msg = f'Saved results for date range to {self.file_path}'
+                    logger.info(f'Saved results for date range to {self.file_path}')
+            # take appropriate action to handle the exception, e.g. prompt the user to select a different file
+            except FileNotFoundError:
+                self.log_msg = f'File not found: {self.file_path}'
+                logger.error(f'File not found: {self.file_path}', exc_info=True)
+            # take appropriate action to handle the exception, e.g. display a generic error message to the user
+            except Exception as e:
+                self.log_msg = f'An error occurred: {e}'
+                logger.error(f'An error occurred: {e}', exc_info=True)
+            finally:
+                self.ui_refresh
+        except Exception as e:
+            self.log_msg = f'An error occurred: {e}'
+            logger.error(f'An error occurred: {e}', exc_info=True)
         finally:
-            self.is_running = False
             self.ui_refresh()
 
 
