@@ -3,7 +3,8 @@ import logging
 from csv import reader
 
 # Third-party library imports
-from PyQt6.QtWidgets import QMainWindow, QFileDialog, QApplication
+from PyQt6.QtWidgets import QMainWindow, QFileDialog, QApplication, QDialog
+from PyQt6.QtGui import QAction
 from openpyxl import load_workbook
 from requests import request
 
@@ -47,6 +48,18 @@ class MyGui(QMainWindow):
         self.ui_refresh()
         self.load_date()
         self.toggle_date_range()
+        # create a menu bar and add an "About" action to it
+        menu_bar = self.menuBar()
+        about_action = QAction("About", self)
+        about_action.triggered.connect(self.show_about_dialog)
+        menu_bar.addAction(about_action)
+    
+    def show_about_dialog(self):
+        about_dialog = QDialog(self)
+        about_dialog.setWindowTitle("About My Program")
+        about_dialog.setModal(True)
+        # set the size and position of the dialog here if needed
+        about_dialog.exec()
 
     # enable or disable run button based on file path
     def toggle_run_button(self):
