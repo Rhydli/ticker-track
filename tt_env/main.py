@@ -10,7 +10,6 @@ from openpyxl import load_workbook
 from requests import request
 
 # Local application imports
-import api_key
 import config as cfg
 from PyQt6 import uic
 
@@ -124,7 +123,7 @@ class MyGui(QMainWindow):
         my_dict = {46: None, 63: None}
         ticker = input.translate(my_dict)
         if ticker and not ticker.isspace():
-            url = f'https://api.marketdata.app/v1/stocks/quotes/{ticker}/?token={api_key.API_KEY}'
+            url = f'https://api.marketdata.app/v1/stocks/quotes/{ticker}/?token={cfg.KEY}'
             response = request("GET", url)
             # check API for ticker data
             try:
@@ -210,7 +209,7 @@ class MyGui(QMainWindow):
     def run(self):
         # define a function to make the API requests for a given ticker and date
         def get_price(t, date):
-            url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={date}&headers=false&format=csv&columns=c&token={api_key.API_KEY}' 
+            url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={date}&headers=false&format=csv&columns=c&token={cfg.KEY}' 
             response = request("GET", url)
             if cfg.isfloat(response.text.strip()):
                 return float(response.text.strip())

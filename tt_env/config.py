@@ -49,6 +49,9 @@ def isfloat(s):
 config = ConfigParser()
 config.read('tt_config.ini')
 
+# API key
+KEY = config['KEY']['key']
+
 # excel config
 BOOK_NAME = config['FILE']['book']
 
