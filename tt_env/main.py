@@ -1,7 +1,6 @@
 # Standard library imports
 import logging
 from csv import reader
-import concurrent.futures
 
 # Third-party library imports
 from PyQt6.QtWidgets import QMainWindow, QFileDialog, QApplication, QDialog
@@ -203,19 +202,8 @@ class MyGui(QMainWindow):
             logger.info('No Ticker provided.')
             self.ui_refresh()
 
-    
-
-    # export data to file
+    # process GET requests and export data to file
     def run(self):
-        # define a function to make the API requests for a given ticker and date
-        def get_price(t, date):
-            url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={date}&headers=false&format=csv&columns=c&token={cfg.KEY}' 
-            response = request("GET", url)
-            if cfg.isfloat(response.text.strip()):
-                return float(response.text.strip())
-            else:
-                return None
-            
         # pull date from UI user input
         date_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
         from_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
@@ -232,17 +220,18 @@ class MyGui(QMainWindow):
             # create variable to store the last numerical price
             last_price = None
             # GET requests to API 
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                # create list of futures for each ticker and date combination
-                futures = [executor.submit(get_price, t, date) for t in cfg.ACTIVE_TICKERS for date in dates]
-                # iterate over the futures as they complete and store the results in the dictionary
-                for idx, future in enumerate(concurrent.futures.as_completed(futures)):
-                    t = cfg.ACTIVE_TICKERS[idx // len(dates)]
-                    date = dates[idx % len(dates)]
-                    price = future.result()
-                    if price is not None:
-                        dates_to_prices.setdefault(date, {})[t] = price
+            for t in cfg.ACTIVE_TICKERS: 
+                # initialize last price for current ticker
+                last_price = None
+                for date in dates:
+                    url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={date}&headers=false&format=csv&columns=c&token={cfg.KEY}' 
+                    response = request("GET", url)
+                    # check if response is a valid numerical price
+                    if cfg.isfloat(response.text.strip()):
+                        price = float(response.text.strip())
+                        # update last numerical price for current ticker
                         last_price = price
+                        dates_to_prices.setdefault(date, {})[t] = price
                     else:
                         # if last numerical price is not available, go back one day at a time up to 7 days to find a valid price
                         if last_price is None:
@@ -251,62 +240,29 @@ class MyGui(QMainWindow):
                             while not found_valid_price and days_back < 7:
                                 yesterday = cfg.datetime.strptime(date, '%Y-%m-%d') - cfg.timedelta(days=1)
                                 date = cfg.datetime.strftime(yesterday, '%Y-%m-%d')
-                                price = get_price(t, date)
-                                if price is not None:
+                                url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={date}&headers=false&format=csv&columns=c&token={cfg.KEY}' 
+                                response = request("GET", url)
+                                if cfg.isfloat(response.text.strip()):
+                                    price = float(response.text.strip())
+                                    last_price = price
                                     dates_to_prices.setdefault(date, {})[t] = price
                                     found_valid_price = True
                                     print(f'Found valid price {price} for {t} on {date}')
                                 else:
-                                    logger.error(f'API Response: None for "{t}" on "{date}"')
+                                    logger.error(f'API Response: {response.text.strip()} for "{t}" on "{date}"')
                                     days_back += 1
                                     print(f'Could not find valid price for {t} on {date}, trying {days_back} days back')
                             # check if a valid price was found and add to dictionary
-                            if found_valid_price:
-                                last_price = price
-                                dates_to_prices.setdefault(date, {})[t] = price
+                            if last_price is not None:
+                                dates_to_prices.setdefault(date, {})[t] = last_price
                                 print(f'Using last valid price {last_price} for {t} on {date}')
                             else:
                                 print(f'No valid price found for {t} on {date}')
-                print(dates_to_prices)
-            
-                # update missing prices
-                for ticker in cfg.ACTIVE_TICKERS:
-                    for date in dates:
-                        if date not in dates_to_prices or ticker not in dates_to_prices[date]:
-                            if ticker in dates_to_prices and len(dates_to_prices[ticker]) > 0:
-                                last_price = list(dates_to_prices[ticker].values())[-1]
-                                print(f'Using last valid price {last_price} for {ticker} on {date}')
-                            else:
-                                last_price = None
-                                print(f'No valid price found for {ticker} on {date}')
-                            # if last numerical price is not available, go back one day at a time up to 7 days to find a valid price
-                            if last_price is None:
-                                found_valid_price = False
-                                days_back = 0
-                                while not found_valid_price and days_back < 7:
-                                    yesterday = cfg.datetime.strptime(date, '%Y-%m-%d') - cfg.timedelta(days=1)
-                                    date = cfg.datetime.strftime(yesterday, '%Y-%m-%d')
-                                    price = get_price(ticker, date)
-                                    if price is not None:
-                                        dates_to_prices.setdefault(date, {})[ticker] = price
-                                        found_valid_price = True
-                                        print(f'Found valid price {price} for {ticker} on {date}')
-                                    else:
-                                        logger.error(f'API Response: None for "{ticker}" on "{date}"')
-                                        days_back += 1
-                                        print(f'Could not find valid price for {ticker} on {date}, trying {days_back} days back')
-                                # check if a valid price was found and add to dictionary
-                                if found_valid_price:
-                                    last_price = price
-                                    dates_to_prices.setdefault(date, {})[ticker] = price
-                                    print(f'Using last valid price {last_price} for {ticker} on {date}')
-                                else:
-                                    print(f'No valid price found for {ticker} on {date}')
-                            else:
-                                dates_to_prices.setdefault(date, {})[ticker] = last_price
-                                print(f'Using last valid price {last_price} for {ticker} on {date}')
-                            
+                        else:
+                            dates_to_prices.setdefault(date, {})[t] = last_price
+                            print(f'Using last valid price {last_price} for {t} on {date}')
             # write data to Excel file
+            print(dates_to_prices)
             try:
                 # load the workbook and delete Sheet2 if it exists
                 book = load_workbook(self.file_path)
@@ -328,19 +284,22 @@ class MyGui(QMainWindow):
                 # write newest data to Sheet1               
                 book = load_workbook(self.file_path)
                 sheet = book['Sheet1']
+                row = 1
                 for date_idx, date in enumerate(dates_to_prices):
-                    for ticker_idx, ticker in enumerate(cfg.ACTIVE_TICKERS):
+                    idx_row = 1
+                    for ticker in cfg.ACTIVE_TICKERS:
                         price = dates_to_prices.get(date, {}).get(ticker)
                         if price is not None:
-                            if date_idx == 0:
-                                sheet.cell(row=ticker_idx + 1, column=1).value = date
-                                sheet.cell(row=ticker_idx + 1, column=2).value = ticker
-                                sheet.cell(row=ticker_idx + 1, column=4).value = price
-                            else:
-                                row = len(cfg.ACTIVE_TICKERS) + 3 + (date_idx - 1) * len(cfg.ACTIVE_TICKERS) + ticker_idx
-                                sheet.cell(row=row, column=1).value = date
-                                sheet.cell(row=row, column=2).value = ticker
-                                sheet.cell(row=row, column=4).value = price
+                            sheet.cell(row=row, column=1).value = date
+                            sheet.cell(row=row, column=2).value = ticker
+                            sheet.cell(row=row, column=4).value = price
+                            if date_idx > 0:
+                                offset = date_idx * 6
+                                sheet.cell(row=idx_row, column=1 + offset).value = date
+                                sheet.cell(row=idx_row, column=2 + offset).value = ticker
+                                sheet.cell(row=idx_row, column=4 + offset).value = price
+                                idx_row += 1
+                            row += 1
                 book.save(self.file_path)
                 # get the state of the radio buttons in the UI
                 is_single_date = self.single_radio.isChecked()
@@ -359,9 +318,13 @@ class MyGui(QMainWindow):
             except Exception as e:
                 self.log_msg = f'An error occurred: {e}'
                 logger.error(f'An error occurred: {e}', exc_info=True)
+            finally:
+                self.ui_refresh
+        except Exception as e:
+            self.log_msg = f'An error occurred: {e}'
+            logger.error(f'An error occurred: {e}', exc_info=True)
         finally:
             self.ui_refresh()
-
 
 def main():
     app = QApplication([])
