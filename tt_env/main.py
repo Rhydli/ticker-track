@@ -47,6 +47,8 @@ class MyGui(QMainWindow):
         self.ui_refresh()
         self.load_date()
         self.toggle_date_range()
+
+    '''
         # create a menu bar and add an "About" action to it
         menu_bar = self.menuBar()
         about_action = QAction("About", self)
@@ -59,6 +61,7 @@ class MyGui(QMainWindow):
         about_dialog.setModal(True)
         # set the size and position of the dialog here if needed
         about_dialog.exec()
+    '''
 
     # enable or disable run button based on file path
     def toggle_run_button(self):
