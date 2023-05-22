@@ -71,7 +71,7 @@ class MyGui(QMainWindow):
             self.run_button.setEnabled(False)
 
     # toggle date range ui widget visibility
-    def toggle_date_range(self):
+    '''def toggle_date_range(self):
         if self.single_radio.isChecked():
             self.year_range_end.setVisible(False)
             self.month_range_end.setVisible(False)
@@ -85,7 +85,46 @@ class MyGui(QMainWindow):
             self.day_range_end.setVisible(True)
             self.date_div_3.setVisible(True)
             self.date_div_4.setVisible(True)
-            self.from_label.setVisible(True)
+            self.from_label.setVisible(True)'''
+    
+    def toggle_date_range(self):
+        date_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
+        from_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
+
+        date = cfg.datetime.strptime(date_string, '%Y-%m-%d')
+
+        if self.single_radio.isChecked():
+            self.year_range_end.setVisible(False)
+            self.month_range_end.setVisible(False)
+            self.day_range_end.setVisible(False)
+            self.date_div_3.setVisible(False)
+            self.date_div_4.setVisible(False)
+            self.from_label.setVisible(False)
+        elif self.range_radio.isChecked():
+            if from_string == '--':
+                # populate "from" date fields with values from "date" fields
+                self.year_range_end.setText(self.year_line_edit.text())
+                self.month_range_end.setText(self.month_line_edit.text())
+                self.day_range_end.setText(self.day_line_edit.text())
+
+            from_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
+            from_date = cfg.datetime.strptime(from_string, '%Y-%m-%d')
+
+            if from_date is not None and from_date > date:
+                # clear the "From" field
+                self.year_range_end.clear()
+                self.month_range_end.clear()
+                self.day_range_end.clear()
+                # show an error message or take any other appropriate action
+                self.log_msg = 'Error: "From" date cannot be after the "Date" date.'
+                logger.error('Error: "From" date cannot be after the "Date" date.')
+            else:
+                self.year_range_end.setVisible(True)
+                self.month_range_end.setVisible(True)
+                self.day_range_end.setVisible(True)
+                self.date_div_3.setVisible(True)
+                self.date_div_4.setVisible(True)
+                self.from_label.setVisible(True)
 
     # init last closing day on startup or reset
     def load_date(self):
@@ -207,9 +246,23 @@ class MyGui(QMainWindow):
 
     # process GET requests and export data to file
     def run(self):
-        # pull date from UI user input
         date_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
         from_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
+        date = cfg.datetime.strptime(date_string, '%Y-%m-%d')
+        from_date = cfg.datetime.strptime(from_string, '%Y-%m-%d')
+        if self.single_radio.isChecked():
+            dates = [date_string]
+        elif self.range_radio.isChecked():
+            if from_date > date:
+                # show an error message or take any other appropriate action
+                self.log_msg = 'Error: "From" date cannot be after the "Date" date.'
+                logger.error('Error: "From" date cannot be after the "Date" date.')
+                self.ui_refresh()
+                return
+            else:
+                delta = date - from_date
+                dates = [cfg.datetime.strftime(from_date + cfg.timedelta(days=i), '%Y-%m-%d') for i in range(delta.days + 1)]
+        # pull date from UI user input
         try:
             # create list of dates from UI
             if self.single_radio.isChecked():
@@ -308,10 +361,10 @@ class MyGui(QMainWindow):
                 is_single_date = self.single_radio.isChecked()
                 is_date_range = self.range_radio.isChecked()
                 if is_single_date:
-                    self.log_msg = f'Saved results for single date to {self.file_path}'
+                    self.log_msg = self.add_timestamp_to_log(f'Saved results for single date to {self.file_path}')
                     logger.info(f'Saved results for single date to {self.file_path}')
                 elif is_date_range:
-                    self.log_msg = f'Saved results for date range to {self.file_path}'
+                    self.log_msg = self.add_timestamp_to_log(f'Saved results for date range to {self.file_path}')
                     logger.info(f'Saved results for date range to {self.file_path}')
             # take appropriate action to handle the exception, e.g. prompt the user to select a different file
             except FileNotFoundError:
@@ -328,6 +381,10 @@ class MyGui(QMainWindow):
             logger.error(f'An error occurred: {e}', exc_info=True)
         finally:
             self.ui_refresh()
+
+    def add_timestamp_to_log(self, log_msg):
+        timestamp = cfg.datetime.now().strftime('%H:%M:%S')
+        return f'[{timestamp}] {log_msg}'
 
 def main():
     app = QApplication([])
