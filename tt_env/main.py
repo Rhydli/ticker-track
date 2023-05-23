@@ -1,4 +1,5 @@
 # Standard library imports
+import os
 import logging
 from csv import reader
 
@@ -146,16 +147,21 @@ class MyGui(QMainWindow):
         with open('tt_config.ini', 'w') as configfile:
             cfg.config.write(configfile)
     
-    # update ui
+    # update UI
     def ui_refresh(self):
+        # update and sort lists
         self.active_list.clear()
-        self.active_list.addItems(cfg.ACTIVE_TICKERS[:])
         self.inactive_list.clear()
-        self.inactive_list.addItems(cfg.INACTIVE_TICKERS[:])
+        cfg.ACTIVE_TICKERS.sort()
+        cfg.INACTIVE_TICKERS.sort()
+        self.active_list.addItems(cfg.ACTIVE_TICKERS)
+        self.inactive_list.addItems(cfg.INACTIVE_TICKERS)
+        # update text elements
         self.console_message.setText(self.log_msg)
         self.console_message.setToolTip(self.log_msg)
         self.path_line_edit.setToolTip(self.path_line_edit.text())
         self.file_path = self.path_line_edit.text()
+        # update functions
         self.save_file_path()
         self.toggle_run_button()
 
@@ -246,24 +252,35 @@ class MyGui(QMainWindow):
 
     # process GET requests and export data to file
     def run(self):
-        date_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
-        from_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
-        date = cfg.datetime.strptime(date_string, '%Y-%m-%d')
-        from_date = cfg.datetime.strptime(from_string, '%Y-%m-%d')
-        if self.single_radio.isChecked():
-            dates = [date_string]
-        elif self.range_radio.isChecked():
-            if from_date > date:
-                # show an error message or take any other appropriate action
-                self.log_msg = 'Error: "From" date cannot be after the "Date" date.'
-                logger.error('Error: "From" date cannot be after the "Date" date.')
-                self.ui_refresh()
-                return
-            else:
-                delta = date - from_date
-                dates = [cfg.datetime.strftime(from_date + cfg.timedelta(days=i), '%Y-%m-%d') for i in range(delta.days + 1)]
-        # pull date from UI user input
+        # Get the file path
+        self.file_path = self.path_line_edit.text()
+
+        # Check if the file is writable and accessible
+        if not os.access(self.file_path, os.W_OK):
+            self.log_msg = f'Error: Unable to write to or access the file: {self.file_path}'
+            logger.error(f'Unable to write to or access the file: {self.file_path}')
+            self.ui_refresh()
+            return
         try:
+        
+            date_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
+            from_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
+            date = cfg.datetime.strptime(date_string, '%Y-%m-%d')
+            from_date = cfg.datetime.strptime(from_string, '%Y-%m-%d')
+            if self.single_radio.isChecked():
+                dates = [date_string]
+            elif self.range_radio.isChecked():
+                if from_date > date:
+                    # show an error message or take any other appropriate action
+                    self.log_msg = 'Error: "From" date cannot be after the "Date" date.'
+                    logger.error('Error: "From" date cannot be after the "Date" date.')
+                    self.ui_refresh()
+                    return
+                else:
+                    delta = date - from_date
+                    dates = [cfg.datetime.strftime(from_date + cfg.timedelta(days=i), '%Y-%m-%d') for i in range(delta.days + 1)]
+            # pull date from UI user input
+        
             # create list of dates from UI
             if self.single_radio.isChecked():
                 dates = cfg.generate_date_range(date_string, date_string)
@@ -275,6 +292,7 @@ class MyGui(QMainWindow):
             dates_to_prices = {}
             # create variable to store the last numerical price
             last_price = None
+
             # GET requests to API 
             for t in cfg.ACTIVE_TICKERS: 
                 # initialize last price for current ticker
@@ -317,68 +335,72 @@ class MyGui(QMainWindow):
                         else:
                             dates_to_prices.setdefault(date, {})[t] = last_price
                             print(f'Using last valid price {last_price} for {t} on {date}')
+
             # write data to Excel file
             print(dates_to_prices)
-            try:
-                # load the workbook and delete Sheet2 if it exists
-                book = load_workbook(self.file_path)
-                if 'Sheet2' in book.sheetnames:
-                    del book['Sheet2']
-                    book.save(self.file_path)
-                # create Sheet2 and copy the data from Sheet1
-                sheet1 = book['Sheet1']
-                if 'Sheet2' not in book.sheetnames:
-                    sheet2 = book.create_sheet('Sheet2')
-                    book.save(self.file_path)
-                    for row in sheet1.rows:
-                        values = [cell.value for cell in row]
-                        sheet2.append(values)
-                        book.save(self.file_path)
-                # clear all rows in Sheet1
-                sheet1.delete_rows(1, sheet1.max_row)
+        
+            # load the workbook and delete Sheet2 if it exists
+            book = load_workbook(self.file_path)
+            if 'Sheet2' in book.sheetnames:
+                del book['Sheet2']
                 book.save(self.file_path)
-                # write newest data to Sheet1               
-                book = load_workbook(self.file_path)
-                sheet = book['Sheet1']
-                row = 1
-                for date_idx, date in enumerate(dates_to_prices):
-                    idx_row = 1
-                    for ticker in cfg.ACTIVE_TICKERS:
-                        price = dates_to_prices.get(date, {}).get(ticker)
-                        if price is not None:
-                            sheet.cell(row=row, column=1).value = date
-                            sheet.cell(row=row, column=2).value = ticker
-                            sheet.cell(row=row, column=4).value = price
-                            if date_idx > 0:
-                                offset = date_idx * 6
-                                sheet.cell(row=idx_row, column=1 + offset).value = date
-                                sheet.cell(row=idx_row, column=2 + offset).value = ticker
-                                sheet.cell(row=idx_row, column=4 + offset).value = price
-                                idx_row += 1
-                            row += 1
+            # create Sheet2 and copy the data from Sheet1
+            sheet1 = book['Sheet1']
+            if 'Sheet2' not in book.sheetnames:
+                sheet2 = book.create_sheet('Sheet2')
                 book.save(self.file_path)
-                # get the state of the radio buttons in the UI
-                is_single_date = self.single_radio.isChecked()
-                is_date_range = self.range_radio.isChecked()
-                if is_single_date:
-                    self.log_msg = self.add_timestamp_to_log(f'Saved results for single date to {self.file_path}')
-                    logger.info(f'Saved results for single date to {self.file_path}')
-                elif is_date_range:
-                    self.log_msg = self.add_timestamp_to_log(f'Saved results for date range to {self.file_path}')
-                    logger.info(f'Saved results for date range to {self.file_path}')
-            # take appropriate action to handle the exception, e.g. prompt the user to select a different file
-            except FileNotFoundError:
-                self.log_msg = f'File not found: {self.file_path}'
-                logger.error(f'File not found: {self.file_path}', exc_info=True)
-            # take appropriate action to handle the exception, e.g. display a generic error message to the user
-            except Exception as e:
-                self.log_msg = f'An error occurred: {e}'
-                logger.error(f'An error occurred: {e}', exc_info=True)
-            finally:
-                self.ui_refresh
+                for row in sheet1.rows:
+                    values = [cell.value for cell in row]
+                    sheet2.append(values)
+                    book.save(self.file_path)
+            # clear all rows in Sheet1
+            sheet1.delete_rows(1, sheet1.max_row)
+            book.save(self.file_path)
+            # write newest data to Sheet1               
+            book = load_workbook(self.file_path)
+            sheet = book['Sheet1']
+            row = 1
+            for date_idx, date in enumerate(dates_to_prices):
+                idx_row = 1
+                for ticker in cfg.ACTIVE_TICKERS:
+                    price = dates_to_prices.get(date, {}).get(ticker)
+                    if price is not None:
+                        sheet.cell(row=row, column=1).value = date
+                        sheet.cell(row=row, column=2).value = ticker
+                        sheet.cell(row=row, column=4).value = price
+                        if date_idx > 0:
+                            offset = date_idx * 6
+                            sheet.cell(row=idx_row, column=1 + offset).value = date
+                            sheet.cell(row=idx_row, column=2 + offset).value = ticker
+                            sheet.cell(row=idx_row, column=4 + offset).value = price
+                            idx_row += 1
+                        row += 1
+            book.save(self.file_path)
+
+            # get the state of the radio buttons in the UI
+            is_single_date = self.single_radio.isChecked()
+            is_date_range = self.range_radio.isChecked()
+            if is_single_date:
+                self.log_msg = self.add_timestamp_to_log(f'Saved results for single date to {self.file_path}')
+                logger.info(f'Saved results for single date to {self.file_path}')
+            elif is_date_range:
+                self.log_msg = self.add_timestamp_to_log(f'Saved results for date range to {self.file_path}')
+                logger.info(f'Saved results for date range to {self.file_path}')
+        except FileNotFoundError:
+            self.log_msg = f'File not found: {self.file_path}'
+            logger.error(f'File not found: {self.file_path}', exc_info=True)
+            self.ui_refresh()
+            return
+        except PermissionError:
+            self.log_msg = f'Permission denied: {self.file_path}'
+            logger.error(f'Permission denied: {self.file_path}', exc_info=True)
+            self.ui_refresh()
+            return
         except Exception as e:
             self.log_msg = f'An error occurred: {e}'
             logger.error(f'An error occurred: {e}', exc_info=True)
+            self.ui_refresh()
+            return
         finally:
             self.ui_refresh()
 

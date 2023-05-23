@@ -30,6 +30,8 @@ def generate_date_range(from_date, to_date):
 
 # convert list data back into str and save into ini file
 def update_cfg():
+    ACTIVE_TICKERS.sort()
+    INACTIVE_TICKERS.sort()
     config.set('TICKERS', 'active_tickers', str(ACTIVE_TICKERS))
     config.set('TICKERS', 'inactive_tickers', str(INACTIVE_TICKERS))
     with open('tt_config.ini', 'w') as configfile:
