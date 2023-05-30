@@ -36,6 +36,7 @@ class MyGui(QMainWindow):
         self.single_radio.setChecked(True)
         self.log_msg = ''
         self.file_path = self.path_line_edit.text()
+        self.dates_to_prices = {} # date:[(ticker,price)]
         self.path_line_edit.textChanged.connect(self.ui_refresh)
         self.add_button.clicked.connect(lambda: self.add((self.ticker_line_edit.text().upper())))
         self.toggle_button.clicked.connect(lambda: self.toggle(self.ticker_line_edit.text().upper()))
@@ -250,159 +251,158 @@ class MyGui(QMainWindow):
             logger.info('No Ticker provided.')
             self.ui_refresh()
 
-    # process GET requests and export data to file
-    def run(self):
-        # Get the file path
-        self.file_path = self.path_line_edit.text()
-
-        # Check if the file is writable and accessible
-        if not os.access(self.file_path, os.W_OK):
-            self.log_msg = f'Error: Unable to write to or access the file: {self.file_path}'
-            logger.error(f'Unable to write to or access the file: {self.file_path}')
-            self.ui_refresh()
-            return
-        try:
-        
-            date_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
-            from_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
-            date = cfg.datetime.strptime(date_string, '%Y-%m-%d')
-            from_date = cfg.datetime.strptime(from_string, '%Y-%m-%d')
-            if self.single_radio.isChecked():
-                dates = [date_string]
-            elif self.range_radio.isChecked():
-                if from_date > date:
-                    # show an error message or take any other appropriate action
-                    self.log_msg = 'Error: "From" date cannot be after the "Date" date.'
-                    logger.error('Error: "From" date cannot be after the "Date" date.')
-                    self.ui_refresh()
-                    return
-                else:
-                    delta = date - from_date
-                    dates = [cfg.datetime.strftime(from_date + cfg.timedelta(days=i), '%Y-%m-%d') for i in range(delta.days + 1)]
-            # pull date from UI user input
-        
-            # create list of dates from UI
-            if self.single_radio.isChecked():
-                dates = cfg.generate_date_range(date_string, date_string)
-            elif self.range_radio.isChecked():
-                dates = cfg.generate_date_range(from_string, date_string)
-            # create a list to store the closing prices
-            prices = []
-            # create dictionary to store "date:[(ticker,price)]"
-            dates_to_prices = {}
-            # create variable to store the last numerical price
+    # process GET requests
+    def process_data(self):
+        date_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
+        from_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
+        date = cfg.datetime.strptime(date_string, '%Y-%m-%d')
+        from_date = cfg.datetime.strptime(from_string, '%Y-%m-%d')
+        if self.single_radio.isChecked():
+            dates = [date_string]
+        elif self.range_radio.isChecked():
+            if from_date > date:
+                # show an error message or take any other appropriate action
+                self.log_msg = 'Error: "From" date cannot be after the "Date" date.'
+                logger.error('Error: "From" date cannot be after the "Date" date.')
+                self.ui_refresh()
+                return
+            else:
+                delta = date - from_date
+                dates = [cfg.datetime.strftime(from_date + cfg.timedelta(days=i), '%Y-%m-%d') for i in range(delta.days + 1)]
+        # create list of dates from UI
+        if self.single_radio.isChecked():
+            dates = cfg.generate_date_range(date_string, date_string)
+        elif self.range_radio.isChecked():
+            dates = cfg.generate_date_range(from_string, date_string)
+        # create variable to store the last numerical price
+        last_price = None
+        # GET requests to API 
+        for t in cfg.ACTIVE_TICKERS: 
+            # initialize last price for current ticker
             last_price = None
-
-            # GET requests to API 
-            for t in cfg.ACTIVE_TICKERS: 
-                # initialize last price for current ticker
-                last_price = None
-                for date in dates:
-                    url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={date}&headers=false&format=csv&columns=c&token={cfg.KEY}' 
-                    response = request("GET", url)
-                    # check if response is a valid numerical price
-                    if cfg.isfloat(response.text.strip()):
-                        price = float(response.text.strip())
-                        # update last numerical price for current ticker
-                        last_price = price
-                        dates_to_prices.setdefault(date, {})[t] = price
-                    else:
-                        # if last numerical price is not available, go back one day at a time up to 7 days to find a valid price
-                        if last_price is None:
-                            found_valid_price = False
-                            days_back = 0
-                            while not found_valid_price and days_back < 7:
-                                yesterday = cfg.datetime.strptime(date, '%Y-%m-%d') - cfg.timedelta(days=1)
-                                date = cfg.datetime.strftime(yesterday, '%Y-%m-%d')
-                                url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={date}&headers=false&format=csv&columns=c&token={cfg.KEY}' 
-                                response = request("GET", url)
-                                if cfg.isfloat(response.text.strip()):
-                                    price = float(response.text.strip())
-                                    last_price = price
-                                    dates_to_prices.setdefault(date, {})[t] = price
-                                    found_valid_price = True
-                                    print(f'Found valid price {price} for {t} on {date}')
-                                else:
-                                    logger.error(f'API Response: {response.text.strip()} for "{t}" on "{date}"')
-                                    days_back += 1
-                                    print(f'Could not find valid price for {t} on {date}, trying {days_back} days back')
-                            # check if a valid price was found and add to dictionary
-                            if last_price is not None:
-                                dates_to_prices.setdefault(date, {})[t] = last_price
-                                print(f'Using last valid price {last_price} for {t} on {date}')
+            for date in dates:
+                url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={date}&headers=false&format=csv&columns=c&token={cfg.KEY}' 
+                response = request("GET", url)
+                # check if response is a valid numerical price
+                if cfg.isfloat(response.text.strip()):
+                    price = float(response.text.strip())
+                    # update last numerical price for current ticker
+                    last_price = price
+                    self.dates_to_prices.setdefault(date, {})[t] = price
+                else:
+                    # if last numerical price is not available, go back one day at a time up to 7 days to find a valid price
+                    if last_price is None:
+                        found_valid_price = False
+                        days_back = 0
+                        while not found_valid_price and days_back < 7:
+                            yesterday = cfg.datetime.strptime(date, '%Y-%m-%d') - cfg.timedelta(days=1)
+                            date = cfg.datetime.strftime(yesterday, '%Y-%m-%d')
+                            url = f'https://api.marketdata.app/v1/stocks/candles/D/{t}?limit=1&date={date}&headers=false&format=csv&columns=c&token={cfg.KEY}' 
+                            response = request("GET", url)
+                            if cfg.isfloat(response.text.strip()):
+                                price = float(response.text.strip())
+                                last_price = price
+                                self.dates_to_prices.setdefault(date, {})[t] = price
+                                found_valid_price = True
+                                print(f'Found valid price {price} for {t} on {date}')
                             else:
-                                print(f'No valid price found for {t} on {date}')
-                        else:
-                            dates_to_prices.setdefault(date, {})[t] = last_price
+                                logger.error(f'API Response: {response.text.strip()} for "{t}" on "{date}"')
+                                days_back += 1
+                                print(f'Could not find valid price for {t} on {date}, trying {days_back} days back')
+                        # check if a valid price was found and add to dictionary
+                        if last_price is not None:
+                            self.dates_to_prices.setdefault(date, {})[t] = last_price
                             print(f'Using last valid price {last_price} for {t} on {date}')
+                        else:
+                            print(f'No valid price found for {t} on {date}')
+                    else:
+                        self.dates_to_prices.setdefault(date, {})[t] = last_price
+                        print(f'Using last valid price {last_price} for {t} on {date}')
+        print(self.dates_to_prices)
 
-            # write data to Excel file
-            print(dates_to_prices)
-        
-            # load the workbook and delete Sheet2 if it exists
-            book = load_workbook(self.file_path)
-            if 'Sheet2' in book.sheetnames:
-                del book['Sheet2']
-                book.save(self.file_path)
-            # create Sheet2 and copy the data from Sheet1
-            sheet1 = book['Sheet1']
-            if 'Sheet2' not in book.sheetnames:
-                sheet2 = book.create_sheet('Sheet2')
-                book.save(self.file_path)
-                for row in sheet1.rows:
-                    values = [cell.value for cell in row]
-                    sheet2.append(values)
-                    book.save(self.file_path)
-            # clear all rows in Sheet1
-            sheet1.delete_rows(1, sheet1.max_row)
-            book.save(self.file_path)
-            # write newest data to Sheet1               
-            book = load_workbook(self.file_path)
-            sheet = book['Sheet1']
-            row = 1
-            for date_idx, date in enumerate(dates_to_prices):
-                idx_row = 1
-                for ticker in cfg.ACTIVE_TICKERS:
-                    price = dates_to_prices.get(date, {}).get(ticker)
-                    if price is not None:
-                        sheet.cell(row=row, column=1).value = date
-                        sheet.cell(row=row, column=2).value = ticker
-                        sheet.cell(row=row, column=4).value = price
-                        if date_idx > 0:
-                            offset = date_idx * 6
-                            sheet.cell(row=idx_row, column=1 + offset).value = date
-                            sheet.cell(row=idx_row, column=2 + offset).value = ticker
-                            sheet.cell(row=idx_row, column=4 + offset).value = price
-                            idx_row += 1
-                        row += 1
-            book.save(self.file_path)
+    # file validation
+    def write_test(self):
+        book = load_workbook(self.file_path)
+        book.save(self.file_path)
 
-            # get the state of the radio buttons in the UI
-            is_single_date = self.single_radio.isChecked()
-            is_date_range = self.range_radio.isChecked()
-            if is_single_date:
-                self.log_msg = self.add_timestamp_to_log(f'Saved results for single date to {self.file_path}')
-                logger.info(f'Saved results for single date to {self.file_path}')
-            elif is_date_range:
-                self.log_msg = self.add_timestamp_to_log(f'Saved results for date range to {self.file_path}')
-                logger.info(f'Saved results for date range to {self.file_path}')
+    # write data to Excel file
+    def write_data(self, dict):
+        # load the workbook and delete Sheet2 if it exists
+        book = load_workbook(self.file_path)
+        if 'Sheet2' in book.sheetnames:
+            del book['Sheet2']
+            book.save(self.file_path)
+        # create Sheet2 and copy the data from Sheet1
+        sheet1 = book['Sheet1']
+        if 'Sheet2' not in book.sheetnames:
+            sheet2 = book.create_sheet('Sheet2')
+            book.save(self.file_path)
+            for row in sheet1.rows:
+                values = [cell.value for cell in row]
+                sheet2.append(values)
+                book.save(self.file_path)
+        # clear all rows in Sheet1
+        sheet1.delete_rows(1, sheet1.max_row)
+        book.save(self.file_path)
+        # write newest data to Sheet1               
+        book = load_workbook(self.file_path)
+        sheet = book['Sheet1']
+        row = 1
+        for date_idx, date in enumerate(dict):
+            idx_row = 1
+            for ticker in cfg.ACTIVE_TICKERS:
+                price = dict.get(date, {}).get(ticker)
+                if price is not None:
+                    sheet.cell(row=row, column=1).value = date
+                    sheet.cell(row=row, column=2).value = ticker
+                    sheet.cell(row=row, column=4).value = price
+                    if date_idx > 0:
+                        offset = date_idx * 6
+                        sheet.cell(row=idx_row, column=1 + offset).value = date
+                        sheet.cell(row=idx_row, column=2 + offset).value = ticker
+                        sheet.cell(row=idx_row, column=4 + offset).value = price
+                        idx_row += 1
+                    row += 1
+        book.save(self.file_path)
+        # get the state of the radio buttons in the UI
+        is_single_date = self.single_radio.isChecked()
+        is_date_range = self.range_radio.isChecked()
+        if is_single_date:
+            self.log_msg = self.add_timestamp_to_log(f'Saved results for single date to {self.file_path}')
+            logger.info(f'Saved results for single date to {self.file_path}')
+        elif is_date_range:
+            self.log_msg = self.add_timestamp_to_log(f'Saved results for date range to {self.file_path}')
+            logger.info(f'Saved results for date range to {self.file_path}')
+
+    def run(self):
+        # get the file path
+        self.file_path = self.path_line_edit.text()
+        # test if file open or exists
+        try:
+            self.write_test()
+            # pull API data
+            try:
+                self.process_data()
+                self.write_data(self.dates_to_prices)
+            except Exception as e:
+                self.log_msg = f'An error occurred: {e}'
+                logger.error(f'An error occurred: {e}', exc_info=True)
+                self.ui_refresh()
+                return
+            finally:
+                # clear dict for next run if program kept open
+                self.dates_to_prices = {}
+                self.ui_refresh()
         except FileNotFoundError:
             self.log_msg = f'File not found: {self.file_path}'
-            logger.error(f'File not found: {self.file_path}', exc_info=True)
+            logger.error(f'File not found: {self.file_path}')
             self.ui_refresh()
             return
         except PermissionError:
-            self.log_msg = f'Permission denied: {self.file_path}'
-            logger.error(f'Permission denied: {self.file_path}', exc_info=True)
+            self.log_msg = f'Permission denied: Unable to write to or access the file: {self.file_path}'
+            logger.error(f'Unable to write to or access the file: {self.file_path}')
             self.ui_refresh()
             return
-        except Exception as e:
-            self.log_msg = f'An error occurred: {e}'
-            logger.error(f'An error occurred: {e}', exc_info=True)
-            self.ui_refresh()
-            return
-        finally:
-            self.ui_refresh()
 
     def add_timestamp_to_log(self, log_msg):
         timestamp = cfg.datetime.now().strftime('%H:%M:%S')
