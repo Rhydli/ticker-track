@@ -5,13 +5,14 @@ from csv import reader
 
 # Third-party library imports
 from PyQt6.QtWidgets import QMainWindow, QFileDialog, QApplication, QDialog
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QDesktopServices
+from PyQt6.QtCore import QFileInfo, QUrl
+from PyQt6 import uic
 from openpyxl import load_workbook
 from requests import request
 
 # Local application imports
 import config as cfg
-from PyQt6 import uic
 
 
 # log setup
@@ -44,26 +45,23 @@ class MyGui(QMainWindow):
         self.reset_date_button.clicked.connect(self.load_date)
         self.browse_button.clicked.connect(self.browse)
         self.run_button.clicked.connect(self.run)
+        self.open_button.clicked.connect(self.open_file)
+        self.folder_button.clicked.connect(self.open_folder)
         self.single_radio.toggled.connect(self.toggle_date_range)
         self.range_radio.toggled.connect(self.toggle_date_range)
         self.ui_refresh()
         self.load_date()
         self.toggle_date_range()
 
-    '''
-        # create a menu bar and add an "About" action to it
-        menu_bar = self.menuBar()
-        about_action = QAction("About", self)
-        about_action.triggered.connect(self.show_about_dialog)
-        menu_bar.addAction(about_action)
+    def open_file(self):
+        if self.file_path:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(self.file_path))
     
-    def show_about_dialog(self):
-        about_dialog = QDialog(self)
-        about_dialog.setWindowTitle("About My Program")
-        about_dialog.setModal(True)
-        # set the size and position of the dialog here if needed
-        about_dialog.exec()
-    '''
+    def open_folder(self):
+        if self.file_path:
+            file_info = QFileInfo(self.file_path)
+            folder_path = file_info.path()
+            QDesktopServices.openUrl(QUrl.fromLocalFile(folder_path))
 
     # enable or disable run button based on file path
     def toggle_run_button(self):
@@ -73,22 +71,6 @@ class MyGui(QMainWindow):
             self.run_button.setEnabled(False)
 
     # toggle date range ui widget visibility
-    '''def toggle_date_range(self):
-        if self.single_radio.isChecked():
-            self.year_range_end.setVisible(False)
-            self.month_range_end.setVisible(False)
-            self.day_range_end.setVisible(False)
-            self.date_div_3.setVisible(False)
-            self.date_div_4.setVisible(False)
-            self.from_label.setVisible(False)
-        elif self.range_radio.isChecked():
-            self.year_range_end.setVisible(True)
-            self.month_range_end.setVisible(True)
-            self.day_range_end.setVisible(True)
-            self.date_div_3.setVisible(True)
-            self.date_div_4.setVisible(True)
-            self.from_label.setVisible(True)'''
-    
     def toggle_date_range(self):
         date_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
         from_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
