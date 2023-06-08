@@ -4,7 +4,7 @@ import logging
 from csv import reader
 
 # Third-party library imports
-from PyQt6.QtWidgets import QMainWindow, QFileDialog, QApplication, QDialog
+from PyQt6.QtWidgets import QMainWindow, QFileDialog, QApplication, QDialog, QListWidget, QLineEdit
 from PyQt6.QtGui import QAction, QDesktopServices
 from PyQt6.QtCore import QFileInfo, QUrl
 from PyQt6 import uic
@@ -52,11 +52,24 @@ class MyGui(QMainWindow):
         self.ui_refresh()
         self.load_date()
         self.toggle_date_range()
+        self.active_list = self.findChild(QListWidget, 'active_list')
+        self.inactive_list = self.findChild(QListWidget, 'inactive_list')
+        self.ticker_line_edit = self.findChild(QLineEdit, 'ticker_line_edit')
+        self.active_list.itemClicked.connect(self.update_ticker_line_edit)
+        self.inactive_list.itemClicked.connect(self.update_ticker_line_edit)
+        self.active_list.itemDoubleClicked.connect(self.toggle_click)
+        self.inactive_list.itemDoubleClicked.connect(self.toggle_click)
 
+    # display ticker in UI when item im list is clicked
+    def update_ticker_line_edit(self, item):
+        self.ticker_line_edit.setText(item.text())
+    
+    # open file in path
     def open_file(self):
         if self.file_path:
             QDesktopServices.openUrl(QUrl.fromLocalFile(self.file_path))
     
+    # open folder containing file in path
     def open_folder(self):
         if self.file_path:
             file_info = QFileInfo(self.file_path)
@@ -179,6 +192,33 @@ class MyGui(QMainWindow):
             except:
                 self.log_msg = f'Exception: {response.json()["errmsg"]}'
                 logger.error(f'Exception: {response.json()["errmsg"]}')
+                self.ui_refresh()
+        else:
+            self.log_msg = 'No Ticker provided.'
+            logger.info('No Ticker provided.')
+            self.ui_refresh()
+
+    # toggle when double clicked
+    def toggle_click(self, item):
+        ticker = item.text().strip()
+        if ticker and not ticker.isspace():
+            if ticker in cfg.ACTIVE_TICKERS:
+                cfg.INACTIVE_TICKERS.append(ticker)
+                cfg.ACTIVE_TICKERS.remove(ticker)
+                cfg.update_cfg()
+                self.log_msg = f'"{ticker}" moved to inactive tickers.'
+                logger.info(f'"{ticker}" moved to inactive tickers.')
+                self.ui_refresh()
+            elif ticker in cfg.INACTIVE_TICKERS:
+                cfg.ACTIVE_TICKERS.append(ticker)
+                cfg.INACTIVE_TICKERS.remove(ticker)
+                cfg.update_cfg()
+                self.log_msg = f'"{ticker}" moved to active tickers.'
+                logger.info(f'"{ticker}" moved to active tickers.')
+                self.ui_refresh()
+            else:
+                self.log_msg = f'"{ticker}" ticker has not yet been added.'
+                logger.info(f'"{ticker}" ticker has not yet been added.')
                 self.ui_refresh()
         else:
             self.log_msg = 'No Ticker provided.'
