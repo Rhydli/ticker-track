@@ -37,6 +37,8 @@ class MyGui(QMainWindow):
         self.single_radio.setChecked(True)
         self.log_msg = ''
         self.file_path = self.path_line_edit.text()
+        self.date_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
+        self.from_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
         self.dates_to_prices = {} # date:[(ticker,price)]
         self.path_line_edit.textChanged.connect(self.ui_refresh)
         self.add_button.clicked.connect(lambda: self.add((self.ticker_line_edit.text().upper())))
@@ -59,6 +61,13 @@ class MyGui(QMainWindow):
         self.inactive_list.itemClicked.connect(self.update_ticker_line_edit)
         self.active_list.itemDoubleClicked.connect(self.toggle_click)
         self.inactive_list.itemDoubleClicked.connect(self.toggle_click)
+        # connect signals to slots for date fields
+        self.year_line_edit.textChanged.connect(self.update_ui_on_date_change)
+        self.month_line_edit.textChanged.connect(self.update_ui_on_date_change)
+        self.day_line_edit.textChanged.connect(self.update_ui_on_date_change)
+        self.year_range_end.textChanged.connect(self.update_ui_on_date_change)
+        self.month_range_end.textChanged.connect(self.update_ui_on_date_change)
+        self.day_range_end.textChanged.connect(self.update_ui_on_date_change)
 
     # display ticker in UI when item im list is clicked
     def update_ticker_line_edit(self, item):
@@ -76,12 +85,33 @@ class MyGui(QMainWindow):
             folder_path = file_info.path()
             QDesktopServices.openUrl(QUrl.fromLocalFile(folder_path))
 
+    def update_ui_on_date_change(self):
+        self.ui_refresh()
+
     # enable or disable run button based on file path
+    
     def toggle_run_button(self):
-        if self.file_path:
-            self.run_button.setEnabled(True)
+        if (self.single_radio.isChecked() or self.range_radio.isChecked()) and self.file_path:
+            if self.range_radio.isChecked() and not self.is_valid_date_range():
+                self.run_button.setEnabled(False)
+                self.run_button.setToolTip("'FROM' field cannot be before the 'DATE' field.")
+            else:
+                self.run_button.setEnabled(True)
+                self.run_button.setToolTip("")
         else:
             self.run_button.setEnabled(False)
+            self.run_button.setToolTip("")
+
+    def is_valid_date_range(self):
+        date_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
+        from_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
+        
+        if '--' in date_string or '--' in from_string:
+            return False
+
+        date = cfg.datetime.strptime(date_string, '%Y-%m-%d')
+        from_date = cfg.datetime.strptime(from_string, '%Y-%m-%d')
+        return from_date <= date
 
     # toggle date range ui widget visibility
     def toggle_date_range(self):
@@ -272,25 +302,37 @@ class MyGui(QMainWindow):
             self.log_msg = 'No Ticker provided.'
             logger.info('No Ticker provided.')
             self.ui_refresh()
-
+    
+    def date_test(self):
+        # check for valid date and raise error
+        try:
+            date_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
+            from_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
+            date = cfg.datetime.strptime(date_string, '%Y-%m-%d')
+            from_date = cfg.datetime.strptime(from_string, '%Y-%m-%d')
+            if self.single_radio.isChecked():
+                dates = [date_string]
+            elif self.range_radio.isChecked():
+                if from_date > date:
+                    '''# show an error message or take any other appropriate action
+                    self.log_msg = 'Error: "From" date cannot be after the "Date" date.'
+                    logger.error('Error: "From" date cannot be after the "Date" date.')
+                    self.ui_refresh()
+                    return'''
+                    raise ValueError("Error: 'From' field cannot be after the 'Date' field.")
+                else:
+                    delta = date - from_date
+                    dates = [cfg.datetime.strftime(from_date + cfg.timedelta(days=i), '%Y-%m-%d') for i in range(delta.days + 1)]
+        # handle the error
+        except ValueError as e:
+                error_msg = str(e)
+                self.log_msg = error_msg
+                logger.error(error_msg)
+                self.ui_refresh()
     # process GET requests
     def process_data(self):
         date_string = f'{self.year_line_edit.text()}-{self.month_line_edit.text()}-{self.day_line_edit.text()}'
         from_string = f'{self.year_range_end.text()}-{self.month_range_end.text()}-{self.day_range_end.text()}'
-        date = cfg.datetime.strptime(date_string, '%Y-%m-%d')
-        from_date = cfg.datetime.strptime(from_string, '%Y-%m-%d')
-        if self.single_radio.isChecked():
-            dates = [date_string]
-        elif self.range_radio.isChecked():
-            if from_date > date:
-                # show an error message or take any other appropriate action
-                self.log_msg = 'Error: "From" date cannot be after the "Date" date.'
-                logger.error('Error: "From" date cannot be after the "Date" date.')
-                self.ui_refresh()
-                return
-            else:
-                delta = date - from_date
-                dates = [cfg.datetime.strftime(from_date + cfg.timedelta(days=i), '%Y-%m-%d') for i in range(delta.days + 1)]
         # create list of dates from UI
         if self.single_radio.isChecked():
             dates = cfg.generate_date_range(date_string, date_string)
